@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Inkbone storybook</title>
+<style>
+:root{--paper:#efe6d6;--card:#f7f1e5;--ink:#221733;--mute:#6f6479;--line:#d6cab5;--hot:#d95f43}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.4 ui-sans-serif,system-ui,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--paper);border-bottom:2px solid var(--ink);padding:12px 20px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+h1{font-size:24px;margin:0;font-weight:900;letter-spacing:-.03em}h1 small{font-size:13px;font-weight:500;color:var(--mute);letter-spacing:0;margin-left:8px}
+nav{display:flex;gap:4px;flex-wrap:wrap}button,select{font:inherit;color:inherit;background:var(--card);border:2px solid var(--ink);border-radius:8px;padding:5px 11px;cursor:pointer}
+nav button[aria-pressed=true]{background:var(--ink);color:var(--paper)}button:hover{background:#fff}nav button[aria-pressed=true]:hover{background:var(--ink)}
+#controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 20px;border-bottom:1px solid var(--line)}label{display:flex;gap:5px;align-items:center;font-size:13px;color:var(--mute)}
+input[type=number]{width:72px;font:inherit;border:2px solid var(--ink);border-radius:8px;padding:4px 7px;background:var(--card)}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;padding:18px 20px}
+.card{background:var(--card);border:2px solid var(--ink);border-radius:12px;overflow:hidden;cursor:pointer;padding:0;display:block;text-align:left;width:100%}
+.card canvas{display:block;width:100%;height:auto}.card span{display:block;padding:6px 10px;font-weight:700;border-top:2px solid var(--ink);font-size:14px}.card:hover{transform:translateY(-2px);background:#fff}
+#detail{position:fixed;inset:0;background:rgba(34,23,51,.78);display:none;align-items:center;justify-content:center;z-index:10;padding:20px}#detail.on{display:flex}
+#panel{background:var(--card);border:3px solid var(--ink);border-radius:14px;width:min(960px,100%);max-height:96vh;overflow:auto;padding:14px}#panel canvas{width:100%;height:auto;display:block;border:2px solid var(--ink);border-radius:8px}
+#bar{display:flex;gap:10px;align-items:center;margin:10px 0}#scrub{flex:1}pre{background:var(--ink);color:#f7f1e5;padding:10px 12px;border-radius:8px;overflow:auto;font-size:13px;margin:0}
+</style></head>
+<body>
+<header><h1>inkbone<small id="stat"></small></h1><nav id="tabs"></nav></header>
+<div id="controls"></div><main id="grid"></main>
+<div id="detail"><div id="panel"><canvas id="big" width="960" height="540"></canvas>
+<div id="bar"><button id="play">Pause</button><input id="scrub" type="range" min="0" max="1" step="0.001" value="0"><span id="time">0.00s</span><button id="copy">Copy code</button><button id="close">Close</button></div><pre id="code"></pre></div></div>
+<script type="module" src="./app.js"></script></body></html>

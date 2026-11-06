@@ -1,0 +1,58 @@
+# Inkbone
+
+Flat vector cartoon animation in code. Characters have a real 3D skeleton with fixed-length bones, so they turn, walk and fall properly. Acting is data: wind-up, hit-stop, overshoot, recovery. Every frame is a pure function of time and seed.
+
+No images, no story, no project-specific content. Use it from anything that can draw on a canvas.
+
+## Run it
+
+```bash
+npm install
+node tools/serve.mjs                  # storybook at http://127.0.0.1:8766
+node tools/render.mjs reel --mp4      # showreel at records/reel/out.mp4
+node tools/check.mjs                  # errors, determinism, random characters
+```
+
+Rendering needs Playwright's Chromium, plus ffmpeg for video.
+
+## What's in it
+
+| | |
+|---|---|
+| **Cast** | `CAST` in `src/cast.js`: 7 hand-designed characters with their own shapes and walks |
+| **Characters** | `createCharacter(seed, overrides)`: 7 body types, 13 hairstyles, 9 outfits, 8 skin tones, faces and accessories |
+| **Moves** | Walks, runs, gestures, emotions, fights, falls, seated, with props |
+| **Expressions** | 19, plus lip-sync through `talk` (0 to 1) |
+| **Effects** | Impacts, smoke, comic marks, fire, explosions, weather, magic. All recolourable |
+| **Sets** | Living room, kitchen, street, rooftop, office, plain. Each takes 9 themes and a seed |
+| **Stage** | Camera moves, shake, transitions, scenes as data |
+
+`node tools/list.mjs` prints everything.
+
+## Use it
+
+```js
+import { Ink, createCharacter, drawAct } from 'inkbone';
+
+const spec = createCharacter(12, { bodyType: 'stout', hair: { style: 'curly' } });
+function frame(ctx, t) {
+  const ink = new Ink(ctx, { t });
+  drawAct(ink, spec, 'wave', t, { x: 960, y: 940, scale: 1.4, facing: .6 });
+}
+```
+
+Scenes, adding moves and effects, and the render-look-fix workflow are in [skills/inkbone/SKILL.md](skills/inkbone/SKILL.md).
+
+## Agent skill
+
+Copy `skills/inkbone` to `~/.claude/skills/` to teach Claude Code to use and extend Inkbone.
+
+## How it works
+
+- **Skeleton.** `src/rig.js` solves bones in 3D with IK. Poses scale by limb length, so one pose fits every body.
+- **Paint.** `src/paint.js` projects the skeleton to flat inked shapes, sorted by depth. Limbs are drawn as one merged silhouette, so joints have no seams.
+- **Timing.** `src/act.js` holds poses on twos, lags the head and hands for overlap, freezes on hits, and blends each move in from the last, so changes never pop.
+- **Light.** A scene grades its characters to match the theme (night, dusk) and hazes the set behind them, so characters stay the highest contrast thing on screen.
+- **Boil.** `src/core.js` redraws lines three ways at 12 fps, the hand-drawn shimmer.
+
+Method credit: [pixelfx](https://github.com/patch-gg/pixelfx) and Hugo Duprez's write-up, for "draft, render, look, refine" and acting as data. No code is copied from either.
