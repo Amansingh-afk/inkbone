@@ -2,6 +2,7 @@
 import { TAU, clamp, lerp, smooth, hash, mix, darken, lighten, strSeed, ellipse } from './core.js';
 import { project as pr, rotY, rotX, add, sub } from './rig.js';
 import { resolveExpr } from './face.js';
+import { drawHat, HATS } from './hats.js';
 const { sin, cos, hypot, atan2, PI, abs, max, min } = Math;
 let SHADOW = '#2a1c3e'; // scenes tint the shadows to match their light
 export const setShadowTint = c => { SHADOW = c ?? '#2a1c3e'; };
@@ -305,7 +306,9 @@ const HAIR = {
 function hairLocks(spec, sk, swing) {
   const Hh = HAIR[spec.hair.style], R = spec.body.headR, H = spec.body.headH, hy = sk.headYaw, pitch = sk.headPitch, sy = sin(hy), front = [], back = [];
   const toScreen = v => { const q = rotY(rotX(v, pitch), hy); return [q[0], -q[1] + q[2] * .04]; };
+  const hatted = HATS.some(k => spec.acc.includes(k));
   for (const l of Hh.locks ?? []) {
+    if (hatted && l.lat >= .6) continue;
     let v = rotY(rotX([sin(l.lon) * cos(l.lat) * R * 1.02, sin(l.lat) * H * 1.02, cos(l.lon) * cos(l.lat) * R * 1.02], pitch), hy); const low = clamp(-l.lat / .9), root = { x: v[0] * lerp(.97, .93, low) + sy * R * .1 * low, y: -v[1] + v[2] * .04, z: v[2] };
     const nrm = [sin(l.lon) * cos(l.lat), sin(l.lat), cos(l.lon) * cos(l.lat)], D = toScreen(l.dir ?? nrm), Cu = toScreen(l.curl), L = l.len * R, pts = [], n = 8, c = [];
     for (let i = 0; i <= n; i++) { const u = i / n; c.push([root.x + (D[0] * u + Cu[0] * u * u) * L + swing * L * .2 * u * u, root.y + (D[1] * u + Cu[1] * u * u) * L]); }
@@ -516,14 +519,7 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0) {
   }
   else if (Hh.none) { C.save(); C.clip(hp); C.strokeStyle = lighten(skin, .35); C.lineWidth = R * .09; C.beginPath(); C.arc(-sy * R * .2 - R * .25, -H * .42, R * .36, PI * 1.05, PI * 1.5); C.stroke(); C.restore(); }
   // accessories on the face
-  if (spec.acc.includes('hardhat')) { const col = spec.top.hat ?? '#f4c542', dm = hairTop(R, H, 'none', -PI * .52, PI * .52, 0, .12, seedH).reverse(), bd = []; for (let i = 0; i <= 8; i++) { const a = i / 8; bd.push([lerp(R * 1.06, -R * 1.06, a), -H * .36 - sin(a * PI) * H * .04]); } ink.shape([...dm, ...bd.slice(1)], { fill: col, shade: shadeOf(col), shadeBy: 7 }); ink.shape([[-R * 1.26 + sy * R * .26, -H * .4], [R * 1.26 + sy * R * .26, -H * .4], [R * 1.22 + sy * R * .26, -H * .28], [-R * 1.22 + sy * R * .26, -H * .28]], { fill: darken(col, .12), lw: 4 }); ink.line([[sy * R * .3, -H * .44], [sy * R * .1, -H * 1.1]], { lw: 11, color: darken(col, .12), even: 1 }); }
-  if (spec.acc.includes('turban')) { const col = spec.top.turban ?? '#e8574f', dk = shadeOf(col), dm = hairTop(R, H, 'none', -PI * .4, PI * .4, 0, .24, seedH).reverse(), bd = []; for (let i = 0; i <= 8; i++) { const a = i / 8; bd.push([lerp(R * 1.1, -R * 1.1, a), -H * .5 + sin(a * PI) * H * -.1]); } ink.shape([...dm, ...bd.slice(1)], { fill: col, shade: dk, shadeBy: 8 }); for (const [a, b0] of [[.9, -.64], [.76, -.86], [-.56, -1.02]]) ink.line([[R * a * (1 - sy * .2), H * b0], [sy * R * .2, H * (b0 - .12)], [-R * a * (1 + sy * .2), H * (b0 - .16)]], { lw: 4, color: darken(col, .36) }); }
-  if (spec.acc.includes('cap')) {
-    const ac = spec.top.accent, dome = hairTop(R, H, 'none', -PI * .53, PI * .53, 0, .1, seedH).reverse(), band = []; for (let i = 0; i <= 8; i++) { const a = i / 8; band.push([lerp(R * 1.03, -R * 1.03, a), -H * .4 - sin(a * PI) * H * .04]); }
-    ink.shape([...dome, ...band.slice(1)], { fill: ac, shade: shadeOf(ac), shadeBy: 7 });
-    const bx = sy * R * 1.0, bw = R * lerp(.86, .7, abs(sy)), byy = -H * .38 + cy * 2;
-    ink.shape([[bx - bw * (1 - .35 * sy), byy - 2], [bx + bw * (1 + .35 * sy), byy - 2], [bx + bw * (1 + .35 * sy) + sy * R * .32, byy + R * .12 * cy + 3], [bx - bw * (1 - .35 * sy) + sy * R * .32, byy + R * .12 * cy + 3]], { fill: darken(ac, .15), lw: 4 });
-  }
+  for (const kind of HATS) if (spec.acc.includes(kind)) drawHat(ink, kind, { R, H, hy, pitch, color: { cap: spec.top.accent, hardhat: spec.top.hat, turban: spec.top.turban }[kind], lift: { bob: .02, long: .02 }[hs] ?? 0 });
   ink.pop();
 }
 

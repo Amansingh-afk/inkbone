@@ -25,7 +25,7 @@ node tools/check.mjs                         # errors, determinism, and random c
 node tools/serve.mjs                         # storybook on http://127.0.0.1:8766
 ```
 
-After any change to hands or faces, look at `node tools/hands.mjs records/hands.png` or `node tools/faces.mjs records/faces.png`: every pose or face type, large, in every direction. Check close-ups at full size, not just contact sheets: `bash tools/close.sh out.png 'clap .2 0' 'namaste 1 .7'` puts stills side by side (move, time, facing). Flaws in hands, cuffs and faces only show large. Motion bugs only show in consecutive steps.
+After any change to hands, faces or hats (`node tools/hats.mjs`), look at `node tools/hands.mjs records/hands.png` or `node tools/faces.mjs records/faces.png`: every pose or face type, large, in every direction. Check close-ups at full size, not just contact sheets: `bash tools/close.sh out.png 'clap .2 0' 'namaste 1 .7'` puts stills side by side (move, time, facing). Flaws in hands, cuffs and faces only show large. Motion bugs only show in consecutive steps.
 
 ## Make a scene
 

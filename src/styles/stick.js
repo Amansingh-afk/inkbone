@@ -2,6 +2,7 @@
 import { TAU, clamp, lerp, mix, darken, ellipse } from '../core.js';
 import { project as pr, rotY, rotX } from '../rig.js';
 import { resolveExpr } from '../face.js';
+import { drawHat, HATS } from '../hats.js';
 import { bend, cut, ringsOf, torsoPoly, dense, skirtRing, TOP, hand, footParts, detailsFront, hemTube } from '../paint.js';
 const { sin, cos, abs, max, min, PI, hypot } = Math;
 
@@ -48,14 +49,7 @@ function hairTop(ink, spec, sk) { const kind = spec.stickHair, R = spec.body.hea
   else if (kind === 'bun') { ink.ell(-sy * R * .3, -H * 1.22, R * .34, R * .32, { fill: col, shade: mix(col, SHADE, .3), shadeBy: 4, lw: 4.4 }); cap(.42); }
   else if (kind === 'long' || kind === 'cap') cap(kind === 'long' ? .36 : .46); else if (kind === 'pigtails') cap(.42);
   ink.pop(); }
-function hats(ink, spec, sk) { const R = spec.body.headR, H = spec.body.headH, sy = sin(sk.headYaw), cy = abs(cos(sk.headYaw)), c = pr(sk.head), ac = spec.top.accent; ink.push(c[0], c[1], 1, 1, -sk.headRoll);
-  const dome = (lo, col, shade = .22) => { const pts = []; for (let i = 0; i <= 18; i++) { const a = -PI * lo + 2 * PI * lo * i / 18; pts.push([sin(a) * R * 1.06, -cos(a) * H * 1.08]); } ink.shape(pts, { fill: col, shade: darken(col, shade), shadeBy: 6, lw: 4.6 }); };
-  if (spec.acc.includes('fedora')) { ink.shape([[-R * 1.5, -H * .52], [R * 1.5, -H * .52], [R * 1.05, -H * .7], [-R * 1.05, -H * .7]], { fill: '#6b4029', lw: 4.6 }); ink.shape([[-R * .78, -H * .64], [R * .78, -H * .64], [R * .6, -H * 1.3], [0, -H * 1.18], [-R * .6, -H * 1.3]], { fill: '#6b4029', shade: '#4a2c1b', shadeBy: 6, lw: 4.6 }); ink.shape([[-R * .78, -H * .64], [R * .78, -H * .64], [R * .74, -H * .82], [-R * .74, -H * .82]], { fill: '#221733', stroke: false }); }
-  if (spec.acc.includes('crown')) ink.shape([[-R * .5, -H * .9], [-R * .62, -H * 1.42], [-R * .28, -H * 1.14], [0, -H * 1.5], [R * .28, -H * 1.14], [R * .62, -H * 1.42], [R * .5, -H * .9]], { fill: '#e5b43a', hard: true, lw: 4 });
-  if (spec.acc.includes('cap')) { dome(.42, ac); ink.shape([[sy * R - R * .6, -H * .44], [sy * R + R * .6, -H * .44], [sy * R * 1.34 + R * .6, -H * .26], [sy * R * 1.34 - R * .6, -H * .26]], { fill: darken(ac, .14), lw: 4 }); }
-  if (spec.acc.includes('hardhat')) { dome(.42, '#f4c542', .16); ink.shape([[-R * 1.2 + sy * R * .2, -H * .42], [R * 1.2 + sy * R * .2, -H * .42], [R * 1.16 + sy * R * .2, -H * .32], [-R * 1.16 + sy * R * .2, -H * .32]], { fill: '#e0ab2c', lw: 4 }); ink.line([[0, -H * .44], [0, -H * 1.07]], { lw: 8, color: '#e0ab2c', even: 1 }); }
-  if (spec.acc.includes('turban')) { const col = spec.top.turban ?? '#e8574f'; dome(.36, col, .2); for (const [a, b0] of [[-.84, -.62], [.72, -.86]]) ink.line([[R * a, H * b0], [0, H * (b0 - .12)], [-R * a, H * (b0 - .16)]], { lw: 3.4, color: darken(col, .36) }); }
-  ink.pop(); }
+function hats(ink, spec, sk) { const c = pr(sk.head); ink.push(c[0], c[1], 1, 1, -sk.headRoll); for (const kind of HATS) if (spec.acc.includes(kind)) drawHat(ink, kind, { R: spec.body.headR, H: spec.body.headH, hy: sk.headYaw, pitch: sk.headPitch, color: { cap: spec.top.accent, hardhat: spec.top.hat, turban: spec.top.turban }[kind], lift: .12 }); ink.pop(); }
 export function paintStick(ink, spec, sk, { t = 0, swing = 0, hold = null } = {}) {
   const b = spec.body, p = sk.p, expr = resolveExpr(p.expr ?? 'neutral', p.exprFrom, p.exprF), type = spec.top.type, top = TOP[type] ?? TOP.tee, col = spec.top.color, W = 6.2, seed = spec.seed * 53 + 7, c = ink.ctx, bare = type === 'none' || type === 'vest' && false;
   c.save(); if (p.sq) { c.translate(p.x, 0); c.scale(1 + p.sq, 1 - p.sq); c.translate(-p.x, 0); } if (p.spin) { const d = sin(p.yaw) >= 0 ? -1 : 1; c.translate(p.x, 0); c.rotate(p.spin * d); c.translate(-p.x, 0); }
