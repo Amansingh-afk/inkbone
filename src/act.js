@@ -38,8 +38,9 @@ export const stopTime = m => (m.hits ?? []).reduce((a, h) => a + (h.stop ?? 0), 
 export function poseAt(move, tIn, { facing = .55, overlap = true, twos = true } = {}) {
   const loop = !!move.loop, T = loop ? tIn : Math.min(tIn, move.dur + stopTime(move)), s0 = stopped(move, T);
   const step = t => (twos ? Math.floor(t * 12 + 1e-6) / 12 : t), s = step(s0), norm = v => (loop && !move.cycle ? ((v % move.dur) + move.dur) % move.dur : Math.max(0, v));
-  const base = { ...sample(move, norm(s)) };
-  if (overlap) { // the head and hands arrive a frame or two after the body
+  const inHit = (move.hits ?? []).some(h => T >= h.t && T < h.t + (h.stop ?? 0) + 1 / 24), S1 = inHit ? s0 : s; // a freeze holds the contact pose exactly, with no stepping or lag
+  const base = { ...sample(move, norm(S1)) };
+  if (overlap && !inHit) { // the head and hands arrive a frame or two after the body
     const lagH = sample(move, norm(s - 2 / 24)), lagA = sample(move, norm(s - 1 / 24));
     for (const k of HEAD_FIELDS) if (lagH[k] !== undefined) base[k] = lagH[k]; for (const k of HAND_FIELDS) if (lagA[k]) base[k] = lagA[k];
   }
@@ -80,9 +81,11 @@ export function drawAct(ink, spec, name, t, { x = 0, y = 0, scale = 1, facing = 
   if (shadow) { const c = ink.ctx, rz = spec.body.hip * 1.5, lift = clamp(1 - sk.pelvis[1] / (spec.body.thigh + spec.body.shin) * .25); c.fillStyle = 'rgba(40,24,60,.2)'; c.beginPath(); c.ellipse((sk.lf.a[0] + sk.rf.a[0]) / 2, 8, Math.max(rz * lift, 24), 11 * lift, 0, 0, Math.PI * 2); c.fill(); }
   ink.ctx.save(); ink.ctx.translate(shX / scale, shY / scale);
   // Smear: a fast limb draws a solid tapered wedge back along its path, attached to the limb as drawn.
-  if (!move.cycle) for (const [get, col, R0] of [[q => q.R.h, spec.skin, spec.body.handR], [q => q.L.h, spec.skin, spec.body.handR], [q => q.rf.a, spec.shoes.type === 'sandal' ? spec.skin : spec.shoes.color, spec.body.footH * 1.3], [q => q.lf.a, spec.shoes.type === 'sandal' ? spec.skin : spec.shoes.color, spec.body.footH * 1.3]]) {
+  const frozen = (move.hits ?? []).some(h => t >= h.t - 1 / 24 && t < h.t + (h.stop ?? 0) + 2 / 24); // no smears on a held pose
+  if (!move.cycle && !frozen) for (const [get, col, R0] of [[q => q.R.h, spec.skin, spec.body.handR], [q => q.L.h, spec.skin, spec.body.handR], [q => q.rf.a, spec.shoes.type === 'sandal' ? spec.skin : spec.shoes.color, spec.body.footH * 1.3], [q => q.lf.a, spec.shoes.type === 'sandal' ? spec.skin : spec.shoes.color, spec.body.footH * 1.3]]) {
     const P = [pr(get(sk)), ...[1, 2, 3].map(k => pr(get(solve(spec, at(t - k / 12)))))]; let L = 0; for (let i = 1; i < 4; i++) L += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]);
-    if (L < 230 || L > 1200) continue; const k = Math.min(1, 105 / L); for (let i = 1; i < 4; i++) P[i] = [lerp(P[0][0], P[i][0], k), lerp(P[0][1], P[i][1], k)];
+    if (L < 230 || L > 1200) continue; const sqz = pose.sq ?? 0, spinA = (pose.spin ?? 0) * (Math.sin(pose.yaw) >= 0 ? -1 : 1), csA = Math.cos(spinA), snA = Math.sin(spinA); for (let i = 0; i < 4; i++) { const x0 = (P[i][0] - pose.x) * (1 + sqz), y0 = P[i][1] * (1 - sqz); P[i] = [pose.x + x0 * csA - y0 * snA, x0 * snA + y0 * csA]; } // Smears follow the same squash and spin as the body, and stay a short tail, never limb-length.
+    const k = Math.min(1, 42 / L); for (let i = 1; i < 4; i++) P[i] = [lerp(P[0][0], P[i][0], k), lerp(P[0][1], P[i][1], k)];
     ink.blob([{ pts: P, r: [R0 * .8, R0 * .68, R0 * .48, R0 * .16] }], col, { lw: 3.2 });
   }
   const hold = {}; if (move.props?.r) hold.r = (i, h, e, layer) => drawProp(i, move.props.r, h, e, layer, spec);
