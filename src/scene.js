@@ -2,7 +2,7 @@
 // actor: { spec, x, y?, scale?, facing?, track: [{ at, move, to?, facing?, overrides? }] }
 // With `to`, the actor travels there at the speed its feet are moving. Otherwise it plays the move in place.
 import { Ink } from './core.js';
-import { drawSet, drawForeground, FLOOR, THEMES } from './sets.js';
+import { drawSet, drawSetLight, drawForeground, FLOOR, THEMES, LIGHTS } from './sets.js';
 import { applyCam, camAt, drawTransition } from './stage.js';
 import { drawAct, groundSpeed } from './act.js';
 import { MOVES } from './moves/index.js';
@@ -29,18 +29,19 @@ export function actorState(actor, T) {
   return { x, facing, seg, local: T - start, scale, from };
 }
 // How the light in each theme falls on characters. A scene can set its own with grade: { color, f }, or grade: false for none.
-export const GRADES = { night: { color: '#27346e', f: .42 }, dusk: { color: '#d9603f', f: .16 } };
+export const GRADES = { warm: { color: '#ffb56b', f: .08 }, ochre: { color: '#ffb56b', f: .08 }, cabin: { color: '#d9894a', f: .12 }, pink: { color: '#ff9f8f', f: .08 }, mint: { color: '#fff0a8', f: .05 }, cool: { color: '#7fb0e0', f: .1 }, teal: { color: '#6fb0a8', f: .08 }, night: { color: '#27346e', f: .4 }, dusk: { color: '#e0623f', f: .2 } };
 export function drawScene(ctx, scene, t, { boil = 1, lw = 7 } = {}) {
   const ink = new Ink(ctx, { t, boil, lw }), bg = new Ink(ctx, { t: 0, boil: 0, lw });
-  applyCam(ink, scene.cam ?? {}, t, scene.shakes); bg.sc = ink.sc;
-  drawSet(bg, scene.set ?? 'plain', { theme: scene.theme ?? 'warm', seed: scene.seed ?? 3 }); for (const p of scene.props ?? []) FREE_PROPS[p.name](bg, p.x, p.y ?? FLOOR + 40, p.scale ?? 1.4, p.color);
+  applyCam(ink, scene.cam ?? {}, t, scene.shakes, scene.push); bg.sc = ink.sc;
+  const L0 = LIGHTS[typeof scene.theme === 'string' ? scene.theme : 'warm'] ?? LIGHTS.warm; ink.light = scene.lightDir ?? L0.dir; ink.shadowColor = `${L0.shade}`; drawSet(bg, scene.set ?? 'plain', { theme: scene.theme ?? 'warm', seed: scene.seed ?? 3, camX: camAt(scene.cam ?? {}, t).x }); for (const p of scene.props ?? []) FREE_PROPS[p.name](bg, p.x, p.y ?? FLOOR + 40, p.scale ?? 1.4, p.color);
   // Atmosphere: lift the set toward its own wall colour, so characters are the highest contrast thing on screen.
   const theme = scene.theme ?? 'warm', T = typeof theme === 'string' ? THEMES[theme] : theme, grade = scene.grade ?? (typeof theme === 'string' ? GRADES[theme] : null);
-  ctx.save(); ctx.globalAlpha = scene.haze ?? .14; ctx.fillStyle = T.wall; ctx.fillRect(-50, -50, 2020, 1180); ctx.restore();
+  ctx.save(); ctx.globalAlpha = scene.haze ?? .07; ctx.fillStyle = T.wall; ctx.fillRect(-50, -50, 2020, 1180); ctx.restore();
   setShadowTint(SHADOW_TINT[typeof scene.theme === 'string' ? scene.theme : ''] ?? '#3a2148');
   const A = (scene.actors ?? []).map(a => ({ a, s: actorState(a, t) })).sort((p, q) => (p.a.y ?? 0) - (q.a.y ?? 0));
   for (const { a, s } of A) drawAct(ink, a.spec, s.seg.move, s.local, { x: s.x, y: a.y ?? FLOOR + 40, scale: s.scale, facing: s.facing, overrides: s.seg.overrides ?? a.overrides, from: s.from, clock: t, grade: grade || null });
   for (const f of scene.fx ?? []) { const d = t - f.t, def = FX[f.fx]; if (d < 0 || (!def.loop && d > def.dur) || (f.until && t > f.until)) continue; def.draw(ink, Math.floor(d * 24) / 24, { ...f, x: f.x, y: f.y, scale: f.scale ?? 1, palette: f.palette ?? def.palette, seed: f.seed ?? 1, size: f.size, w: 1920, h: 1080 }); }
+  if (scene.lit !== false) drawSetLight(ctx, scene.set ?? 'plain', scene.theme ?? 'warm');
   for (const f of scene.fg ?? []) drawForeground(bg, f, theme, camAt(scene.cam ?? {}, t).x);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }

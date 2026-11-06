@@ -11,3 +11,5 @@ export * from './sets.js';
 export * from './stage.js';
 export * from './scene.js';
 export * from './cast.js';
+export * from './styles/index.js';
+export * from './version.js';

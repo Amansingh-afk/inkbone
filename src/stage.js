@@ -5,13 +5,14 @@ const W = 1920, H = 1080;
 export function camAt(cam, t) {
   if (!Array.isArray(cam)) return { x: W / 2, y: H / 2, z: 1, ...cam };
   if (t <= cam[0].t) return cam[0]; const last = cam[cam.length - 1]; if (t >= last.t) return last;
-  let i = 1; while (cam[i].t < t) i++; const a = cam[i - 1], b = cam[i], f = (EASE[b.ease] ?? EASE.io)((t - a.t) / (b.t - a.t));
+  let i = 1; while (cam[i].t < t) i++; const a = cam[i - 1], b = cam[i], f = (EASE[b.ease] ?? EASE.glide)((t - a.t) / (b.t - a.t));
   return { x: lerp(a.x, b.x, f), y: lerp(a.y, b.y, f), z: lerp(a.z, b.z, f) };
 }
-export function applyCam(ink, cam, t, shakes = []) {
+export function applyCam(ink, cam, t, shakes = [], push = .012) {
   const c = { ...camAt(cam, t) }; let sx = 0, sy = 0;
-  c.z = Math.max(1, c.z); const hw = W / 2 / c.z, hh = H / 2 / c.z; c.x = clamp(c.x, hw, W - hw); c.y = clamp(c.y, hh, H - hh); // never show past the set
-  for (const s of shakes) { const d = t - s.t; if (d >= 0 && d < s.dur) { const a = s.amp * (1 - d / s.dur), f = Math.floor(t * 24); sx += (hash(f, 11) - .5) * 2 * a; sy += (hash(f, 13) - .5) * 2 * a; } }
+  c.z = Math.max(1, c.z) * (1 + push * t); // a slow push-in keeps every hold alive
+  const hw = W / 2 / c.z, hh = H / 2 / c.z; c.x = clamp(c.x, hw, W - hw); c.y = clamp(c.y, hh, H - hh); // never show past the set
+  for (const s of shakes) { const d = t - s.t; if (d >= 0 && d < s.dur) { const a = s.amp * (1 - d / s.dur), f = Math.floor(t * 24), flip = f % 2 ? 1 : -1; sx += flip * a * (.6 + hash(f, 11) * .4); sy += -flip * a * .6 * (.4 + hash(f, 13) * .6); /* a kick that flips sign every frame */ } }
   ink.ctx.setTransform(c.z, 0, 0, c.z, W / 2 - c.x * c.z + sx, H / 2 - c.y * c.z + sy); ink.sc = c.z;
 }
 export const CAMERA_MOVES = {

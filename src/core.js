@@ -7,6 +7,7 @@ export const smooth = f => f * f * (3 - 2 * f);
 export const EASE = {
   line: f => f,
   io: f => (f < .5 ? 4 * f * f * f : 1 - (-2 * f + 2) ** 3 / 2), // cubic: reaches poses slowly and moves fast between them, so poses read
+  glide: f => f * f * f * (f * (f * 6 - 15) + 10), // camera moves: slow in, slow out, no snap
   in: f => f * f * f,
   out: f => 1 - (1 - f) ** 3,
   back: f => { const c = 1.7; return 1 + (c + 1) * (f - 1) ** 3 + c * (f - 1) ** 2; },
@@ -88,6 +89,8 @@ export class Ink {
   shape(pts, o = {}) {
     const c = this.ctx, path = this.path(pts, { closed: true, hard: o.hard, seed: o.seed });
     if (o.alpha != null) { c.save(); c.globalAlpha = o.alpha; }
+    const w = (o.lw ?? this.lw) * this.weight / this.sc, weighted = o.fill && o.stroke !== false && !this.even && !o.even;
+    if (weighted) { c.save(); c.translate(-this.light[0] * w * .4, -this.light[1] * w * .4); c.strokeStyle = o.ink ?? this.inkColor; c.lineWidth = w * .95; c.stroke(path); c.restore(); } // heavier on the side away from the light; the fill hides the inner half
     if (o.fill) {
       c.fillStyle = o.fill; c.fill(path);
       if (o.shade) { // hard-edged core shadow: dark everywhere, then the lit shape shifted toward the light
@@ -95,7 +98,7 @@ export class Ink {
         c.translate(this.light[0] * by, this.light[1] * by); c.fillStyle = o.fill; c.fill(path); c.restore();
       }
     }
-    if (o.stroke !== false) this.stroke(path, o.lw, o.ink);
+    if (weighted) { c.strokeStyle = o.ink ?? this.inkColor; c.lineWidth = w * .6; c.stroke(path); } else if (o.stroke !== false) this.stroke(path, o.lw, o.ink);
     if (o.alpha != null) c.restore();
     return path;
   }
@@ -124,7 +127,7 @@ export class Ink {
         }
       }
     };
-    if (w > 0) pass(ink ?? this.inkColor, w * .62);
+    if (w > 0) { pass(ink ?? this.inkColor, w * .46, -sd[0] * w * .3, -sd[1] * w * .3); pass(ink ?? this.inkColor, w * .3); }
     pass(shade ?? fill, 0);
     if (shade) { const by = (Array.isArray(items[0].r) ? items[0].r[0] : items[0].r) * .3; pass(fill, -by * .85, sd[0] * by, sd[1] * by); }
   }

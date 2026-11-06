@@ -77,7 +77,7 @@ gulp: { tags: ['comic'], dur: 1.4, keys: [
 - Keys only say what changes. Unset fields carry over.
 - Hands `lh`, `rh` are `[out, up, forward]` in arm lengths from the shoulder. Feet `lf`, `rf` are `[out, lift, forward]` in leg lengths. So one pose fits every body.
 - Other fields are `REST` in `src/rig.js`: `curve arch hipTilt shTilt lPitch rPitch yaw lean side bend twist crouch hop shrug sq spin headSq lStretch rStretch lfStretch rfStretch headYaw headPitch headRoll lhShape rhShape expr look talk overL overR`.
-- Hand shapes: `relax open flat fist point thumb peace grip palmup pinch spread`. To make hands meet or reach the body's centre on any build, set `lMid: 1` / `rMid: 1`: `lh`/`rh` then measure from the chest midline, not the shoulder. Fingers follow the forearm unless aimed: `rAim: [out, up, forward]` with `rAimW: 1`. Namaste and clap use both, and clear them on the way out. Eases: `line io in out back snap`.
+- Hand shapes: `relax open flat fist point thumb peace grip palmup pinch spread`. To make hands meet or reach the body's centre on any build, set `lMid: 1` / `rMid: 1`: `lh`/`rh` then measure from the chest midline, not the shoulder. To touch the face on any body, use `rFace: [out, up, forward]` in head radii with `rFaceW: 1`: the wrist then follows the head, and it goes in front of or behind the head by itself. Set `handed: true` so a one-handed move uses the hand nearest the camera. Fingers follow the forearm unless aimed: `rAim: [out, up, forward]` with `rAimW: 1`. Namaste and clap use both, and clear them on the way out. Eases: `line io in out back snap`.
 - `hits: [{ t, stop, shake, amp }]` freezes everything for `stop` seconds on contact. Anchors for cues: `rh lh head hips feet rf lf chest`.
 - Walks and runs use `cycle` and set `stride`, so scenes can match ground speed. Give a gait `arms: { swing, bend, flex, bias, out }`: the arm swings from the shoulder with the elbow nearly fixed. Setting only hand positions makes the forearm flap while the upper arm stays still. If the body leans, add about that lean to `bias`.
 
@@ -100,6 +100,20 @@ gulp: { tags: ['comic'], dur: 1.4, keys: [
 - **Beards:** the cheek line dips toward the mouth and joins the moustache. Lips show through with no ring.
 - **Hands:** square palm, thick fingers with round tips, thumb a wide wedge from low on the palm.
 - **Poses:** check the silhouette. Separate arms and legs from the body, and avoid tube torsos.
+
+- **Outfits:** layers and construction, not decoration. Show two colours where possible (open jacket over inner tee), and add collars, pockets, cuffs, hem bands and fold marks at elbows, knees and waist. Use `node tools/outfits.mjs`. Prints must be original, with no brand logos.
+
+## Sets and light
+
+A set is `SETS[name] = (layer, T, R) => layer(k, ink => ...)`. `k` is how much that layer lags behind the camera (0 = none), so far layers create parallax. Rooms use `room()`, which gives real perspective, and anything on the side walls uses `onLeftWall` / `onRightWall`. Each theme has an entry in `LIGHTS` (light direction, colour, shadow colour) and `GRADES` (how far characters lean toward it). `drawSetLight` adds glows, window shafts and a vignette over the characters.
+
+Cameras: keys glide by default. Scenes slowly push in (`push`, 0 turns it off). Use `scene.shakes` for impact kicks.
+
+## Styles and the 3D stage
+
+Styles switch with `createCharacter(seed, { style: 'stick' })` or `asStyle(spec, 'stick')`. New looks use `registerStyle` and must stay cartoonish. Never copy characters from reference images.
+
+For 2D characters in a 3D world, see the README section and `src/stage3d/reel.js` for working scenes. In 3D, `face` and walking direction are world angles, while `facing` stays relative to the camera. Always run `node tools/check3d.mjs`: it warns about blocked or unreadable shots. Worlds are generic: film-specific places and story stay in the film's folder.
 
 ## Add an effect
 

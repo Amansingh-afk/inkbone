@@ -47,6 +47,40 @@ Scenes, adding moves and effects, and the render-look-fix workflow are in [skill
 
 Copy `skills/inkbone` to `~/.claude/skills/` to teach Claude Code to use and extend Inkbone.
 
+## Styles
+
+Every character can be drawn in any style, with the same moves: `createCharacter(seed, { style: 'stick' })` or `asStyle(spec, 'stick')`. Today: `round` and `stick`. To add one, call `registerStyle(name, { paint, make })` from `src/styles/`.
+
+## 2D characters in a 3D world
+
+`src/stage3d/` is optional. The 2D core never imports it, and three.js is only needed there.
+
+```js
+import { createStage } from 'inkbone/stage3d';
+const stage = createStage({ width: 1920, height: 1080 });
+stage.draw(ctx, { world: 'chai-stall', time: 'sunset', dur: 6, cam: [{ at: 0, dur: 6, move: 'orbit', target: 'hero' }],
+  actors: [{ id: 'hero', spec, pos: [0, 1], track: [{ at: 0, move: 'walk', to: [2, 1] }] }] }, t);
+```
+
+- **Worlds:** `flat`, `office`, `police-station`, `village`, `canal`, `market`, `chai-stall`. Times: `day`, `sunset`, `night`, or a time-lapse `{ seq: ['day', 'night'], dur: 9 }`.
+- **Camera moves:** `hold`, `push-in`, `pull-out`, `orbit`, `crane-up`, `follow`, `whip`, `fly-through`. Shots can start on a voice line, and `punch: true` holds dead still.
+- **Touching the world:** `reach: { r: 'post' }`, `sit: 'bench'`, `ride: 'scooter1'`, `climb: { from, to }`, plus held props.
+- **Vehicles:** `auto`, `scooter`, `jeep`, `truck`, `jcb`. **Crowds:** `crowd: { n, area }`. **Talking objects:** `talkers: [{ on: 'fridge', say: [...] }]`.
+- **Flat scenes in 3D:** `toWorldScene(scene, 'flat')` converts a flat scene's positions to a world.
+- **Rules:** frames repeat exactly for the same time and seed, the core has no image assets, and film-specific content stays in the film's folder.
+
+```bash
+node tools/render3d.mjs reel3d --mp4     # uses the NVIDIA GPU; --gpu intel or soft to change
+node tools/render3d.mjs world:market --sheet 8 --time night
+node tools/check3d.mjs                   # repeatability, plus blocked or unreadable shots
+node tools/compare.mjs ours.png ref.png  # side by side, with brightness, contrast, saturation
+node tools/lipsync.mjs voice.wav out.json
+```
+
+## Versions
+
+Each film should pin an Inkbone version with a git tag, so engine work never changes a finished film. `VERSION` is in `src/version.js`.
+
 ## How it works
 
 - **Skeleton.** `src/rig.js` solves bones in 3D with IK. Poses scale by limb length, so one pose fits every body.

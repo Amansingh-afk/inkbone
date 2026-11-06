@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+// node tools/lipsync.mjs voice.wav out.json : an envelope for talkAt(), so mouths open with the audio. It gives open and shut, not separate mouth shapes.
+import { execFileSync } from 'node:child_process'; import fs from 'node:fs';
+const [inp, out = 'lipsync.json'] = process.argv.slice(2), rate = 24, sr = 8000, buf = execFileSync('ffmpeg', ['-loglevel', 'error', '-i', inp, '-ac', '1', '-ar', String(sr), '-f', 's16le', '-'], { maxBuffer: 1 << 30 }), n = Math.floor(buf.length / 2), step = sr / rate, v = []; for (let i = 0; i + step <= n; i += step) { let e = 0; for (let k = 0; k < step; k++) { const q = buf.readInt16LE((i + k | 0) * 2) / 32768; e += q * q; } v.push(Math.sqrt(e / step)); } const peak = Math.max(...v, 1e-4), values = v.map(q => +Math.min(1, (q / peak) ** .7 * 1.15).toFixed(3)); fs.writeFileSync(out, JSON.stringify({ rate, values })); console.log(out, values.length, 'values');

@@ -5,7 +5,7 @@ export const EXPRESSIONS = {
   smile:    { lid: .9, lower: .12, pupil: .58, brow: [.12, -.05], mouth: { w: .72, o: 0, s: .8 } },
   laugh:    { lid: 0, arc: 'up', pupil: .5, brow: [.5, -.2], mouth: { w: 1.1, o: 1.2, s: 1 }, blush: 1 },
   sad:      { lid: .72, pupil: .62, look: [0, -.3], brow: [.25, -.55], mouth: { w: .55, o: .05, s: -.75 } },
-  cry:      { lid: 0, arc: 'down', pupil: .5, brow: [.45, -.65], mouth: { w: .95, o: .75, s: -.8 }, tears: 1 },
+  cry:      { lid: 0, arc: 'down', pupil: .5, brow: [.45, -.65], mouth: { w: 1, o: 1.25, s: -.34 }, tears: 1 },
   angry:    { lid: .72, pupil: .42, brow: [-.5, .75], mouth: { w: .72, o: .28, s: -.55 }, teeth: 1 },
   furious:  { lid: .85, pupil: .28, brow: [-.6, .95], mouth: { w: 1, o: .6, s: -.7 }, teeth: 1, blush: .7 },
   shock:    { pop: 1.5, lid: 1.1, pupil: .28, brow: [1, -.15], mouth: { w: .6, o: 1.45, s: 0 } },
@@ -29,6 +29,11 @@ Object.assign(EXPRESSIONS.shock, { brow: [[1.15, -.1], [.82, -.22]] });
 Object.assign(EXPRESSIONS.scared, { brow: [[.92, -.65], [.62, -.5]], mouth: { ...EXPRESSIONS.scared.mouth, skew: .28 } });
 Object.assign(EXPRESSIONS.deadpan, { brow: [[.1, -.04], [-.14, .05]] });
 Object.assign(EXPRESSIONS, {
+  reading: { lid: .56, pupil: .6, look: [0, -.9], brow: [[.12, -.06], [-.02, .05]], mouth: { w: .34, o: 0, s: .06, skew: .3 } },
+  yawn: { lid: 0, arc: 'down', pupil: .5, brow: [[.62, -.42], [.42, -.3]], mouth: { w: .74, o: 1.75, s: -.04 } },
+  sneaky: { lid: [.72, .58], lower: .08, pupil: .5, look: [.62, 0], brow: [[.34, -.1], [-.18, .3]], mouth: { w: .36, o: 0, s: .28, skew: .5 } },
+  weary: { lid: 0, arc: 'down', pupil: .5, brow: [[.12, -.4], [-.02, -.3]], mouth: { w: .46, o: .02, s: -.42, skew: .2 } },
+  content: { lid: 0, arc: 'up', pupil: .5, brow: [[.26, -.12], [.14, -.06]], mouth: { w: .6, o: 0, s: .75, skew: .18 } },
   suspicious: { lid: [.9, .46], pupil: .5, look: [.62, 0], brow: [[.62, -.05], [-.42, .55]], mouth: { w: .46, o: 0, s: -.18, skew: .55 } },
   unimpressed: { lid: [.52, .44], pupil: .52, look: [0, 0], brow: [[.34, 0], [-.12, .1]], mouth: { w: .5, o: 0, s: -.12, skew: -.3 } },
   smirk: { lid: [.78, .6], lower: .1, pupil: .55, look: [.34, 0], brow: [[.48, -.05], [-.04, .12]], mouth: { w: .58, o: 0, s: .62, skew: .85 } },

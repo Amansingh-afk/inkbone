@@ -8,7 +8,7 @@ const r = await p.evaluate(async () => {
   const I = await import('/src/index.js'), { makePreview } = await import('/src/preview.js'), W = 320, H = 240, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d', { willReadFrequently: true });
   const items = [...I.castNames.map(n => 'cast:' + n), 'lineup', ...I.moveNames.map(n => 'move:' + n), ...I.fxNames.map(n => 'fx:' + n), ...I.setNames.map(n => 'set:' + n), ...I.transitionNames.map(n => 'transition:' + n), ...I.exprNames.map(n => 'expression:' + n)], bad = [], sum = () => { const d = x.getImageData(0, 0, W, H).data; let h = 7; for (let i = 0; i < d.length; i += 16) h = Math.imul(h, 31) + d[i] + d[i + 1] * 3 + d[i + 2] * 5 | 0; return h; };
   for (const what of items) for (const seed of [1, 42]) { try { const pv = makePreview({ what, seed, W, H }); const ts = [0, pv.dur * .37, pv.dur * .71]; for (const t of ts) { pv.draw(x, t); const a = sum(); pv.draw(x, 0); pv.draw(x, t); if (a !== sum()) bad.push(`${what} seed ${seed} differs at t=${t.toFixed(2)}`); } } catch (e) { bad.push(`${what} seed ${seed}: ${e.message}`); } }
-  let chars = 0; for (let s = 1; s <= 300; s++) { const pv = makePreview({ what: 'move:walk', seed: s, W, H }); try { pv.draw(x, .3); chars++; } catch (e) { bad.push(`character ${s}: ${e.message}`); } }
+  let chars = 0; for (let s = 1; s <= 300; s++) { const pv = makePreview({ what: 'move:walk', seed: s, W, H }); try { pv.draw(x, .3); makePreview({ what: 'move:wave', seed: s, W, H, opts: { style: 'stick' } }).draw(x, 1); chars++; } catch (e) { bad.push(`character ${s}: ${e.message}`); } }
   return { items: items.length, bad, chars, combos: I.comboCount() };
 });
 await br.close(); server.close();

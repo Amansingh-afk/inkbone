@@ -1,9 +1,9 @@
 // Evaluates a move at time t: anticipation holds, hit-stops, poses on twos, overlap on head and hands.
 import { EASE, clamp, lerp, hash, mix } from './core.js';
 import { REST, solve, project as pr, rotY } from './rig.js';
-import { paintCharacter } from './paint.js';
+import { paintSpec } from './styles/index.js';
 import { MOVES } from './moves/index.js';
-import { drawProp, boxProp } from './props.js';
+import { drawProp, boxProp, bookProp } from './props.js';
 import { FX } from './fx/index.js';
 // A scene's light on a character: every colour leans toward the light's colour. Eye whites and the ink line stay put, so faces still read in the dark.
 const graded = new WeakMap();
@@ -13,7 +13,11 @@ export function gradeSpec(spec, { color, f }) {
   graded.set(spec, cache);
   return cache[key] = { ...spec, skin: g(spec.skin), hair: { ...spec.hair, color: g(spec.hair.color) }, face: { ...spec.face, facialColor: g(spec.face.facialColor) }, top: { ...spec.top, color: g(spec.top.color), accent: g(spec.top.accent) }, bottom: { ...spec.bottom, color: g(spec.bottom.color) }, shoes: { ...spec.shoes, color: g(spec.shoes.color) } };
 }
-const HEAD_FIELDS = ['headYaw', 'headPitch', 'headRoll', 'headSq'], HAND_FIELDS = ['lh', 'rh', 'lMid', 'rMid', 'lAim', 'rAim', 'lAimW', 'rAimW', 'lPole', 'rPole', 'lPoleW', 'rPoleW'];
+const HEAD_FIELDS = ['headYaw', 'headPitch', 'headRoll', 'headSq'], HAND_FIELDS = ['lh', 'rh', 'lMid', 'rMid', 'lAim', 'rAim', 'lAimW', 'rAimW', 'lPole', 'rPole', 'lPoleW', 'rPoleW', 'lFace', 'rFace', 'lFaceW', 'rFaceW', 'mugTilt'];
+const SIDED = ['h', 'hShape', 'Elbow', 'Mid', 'Aim', 'AimW', 'Pole', 'PoleW', 'Face', 'FaceW', 'Stretch'], OVER = ['overL', 'overR'];
+// A 'handed' move uses the hand nearest the camera, whichever way the character faces.
+const flipHands = p => { for (const k of SIDED) { const l = p['l' + k], r = p['r' + k]; p['l' + k] = r; p['r' + k] = l; } const o = p.overL; p.overL = p.overR; p.overR = o; p.headRoll = -(p.headRoll ?? 0); p.side = -(p.side ?? 0); return p; };
+const isFlipped = (move, facing) => !!move.handed && Math.sin(facing) < 0;
 const BLEND = .25; // seconds a new move takes to take over from the last one. Set blendIn on a move to change it; 0 is an instant reaction.
 const mixVal = (a, b, f) => Array.isArray(a) ? a.map((v, i) => lerp(v, b[i], f)) : typeof a === 'number' ? lerp(a, b, f) : (f < .5 ? a : b);
 
@@ -44,7 +48,7 @@ export function poseAt(move, tIn, { facing = .55, overlap = true, twos = true } 
     const lagH = sample(move, norm(s - 2 / 24)), lagA = sample(move, norm(s - 1 / 24));
     for (const k of HEAD_FIELDS) if (lagH[k] !== undefined) base[k] = lagH[k]; for (const k of HAND_FIELDS) if (lagA[k]) base[k] = lagA[k];
   }
-  base.yaw = (base.yaw ?? 0) + facing;
+  base.yaw = (base.yaw ?? 0) + facing; if (isFlipped(move, facing)) flipHands(base);
   return base;
 }
 // Mixes two full poses. Yaw takes the short way round, and expressions fade instead of popping.
@@ -63,11 +67,11 @@ export function actingPose(move, t, { facing = .55, overrides = null, from = nul
   return mixPose(a, pose, EASE.io(clamp((Math.floor(t * 12 + 1e-6) + 1) / (d * 12))));
 }
 const spinPt = (p, v) => { if (!p.spin) return v; const a = p.spin * (Math.sin(p.yaw) >= 0 ? -1 : 1), c = Math.cos(a), s = Math.sin(a), x = v[0] - p.x; return [p.x + x * c - v[1] * s, x * s + v[1] * c]; };
-const ANCHOR = { rh: s => s.R.h, lh: s => s.L.h, head: s => s.head, hips: s => s.pelvis, rf: s => s.rf.a, lf: s => s.lf.a, chest: s => s.chest };
+const ANCHOR = { face: s => s.head, rh: s => s.R.h, lh: s => s.L.h, head: s => s.head, hips: s => s.pelvis, rf: s => s.rf.a, lf: s => s.lf.a, chest: s => s.chest };
 export function anchorOf(spec, sk, at) { if (at === 'feet') return [(sk.lf.a[0] + sk.rf.a[0]) / 2, 0]; const v = spinPt(sk.p, pr(ANCHOR[at]?.(sk) ?? sk.pelvis)); const up = at === 'head' ? -spec.body.headH * (sk.p.spin ? .2 : 1.05) : 0; return [v[0], v[1] + up]; }
 
 // One character acting one move at position (x, y) on screen.
-export function drawAct(ink, spec, name, t, { x = 0, y = 0, scale = 1, facing = .55, flip = 1, travel = 0, overrides = null, cues = true, shadow = true, palette, from = null, clock = t, grade = null } = {}) {
+export function drawAct(ink, spec, name, t, { x = 0, y = 0, scale = 1, facing = .55, flip = 1, travel = 0, overrides = null, cues = true, shadow = true, palette, from = null, clock = t, grade = null, weightK = 1 } = {}) {
   const move = MOVES[name] ?? MOVES.idle, at = (u, overlap = true) => actingPose(move, Math.max(0, u), { facing, overrides, from, overlap }), pose = at(t);
   // Thinking: the eyes get there first, a head turn takes a blink with it, and resting eyes make small darts.
   const turnYaw = p => (p.yaw ?? 0) + (p.twist ?? 0) * .25 + (p.headYaw ?? 0), ahead = turnYaw(at(t + 4 / 24)) - turnYaw(pose), win = Math.floor(clock / 1.3), dart = hash(spec.seed * 3 + 5, win, 3) > .55 ? (hash(spec.seed * 3 + 5, win, 7) - .5) * .34 : 0;
@@ -76,9 +80,9 @@ export function drawAct(ink, spec, name, t, { x = 0, y = 0, scale = 1, facing = 
   const sk = solve(spec, pose), prev = solve(spec, at(t - .1)); if (grade) spec = gradeSpec(spec, grade);
   const swing = clamp((prev.head[0] - sk.head[0]) / 34 + (move.stride ? -.45 * Math.sign(Math.sin(pose.yaw)) : 0), -1, 1);
   const stops = move.hits ?? []; let shX = 0, shY = 0;
-  for (const h of stops) { const d = t - h.t; if (d >= 0 && d < (h.shake ?? 0)) { const a = (h.amp ?? 8) * (1 - d / h.shake), f = Math.floor(t * 24); shX += (hash(f, 3) - .5) * 2 * a; shY += (hash(f, 7) - .5) * 2 * a; } }
-  ink.push(x, y, scale, flip); const keepW = ink.weight; ink.weight = Math.max(.42, Math.min(1.15, scale ** .85));
-  if (shadow) { const c = ink.ctx, rz = spec.body.hip * 1.5, lift = clamp(1 - sk.pelvis[1] / (spec.body.thigh + spec.body.shin) * .25); c.fillStyle = 'rgba(40,24,60,.2)'; c.beginPath(); c.ellipse((sk.lf.a[0] + sk.rf.a[0]) / 2, 8, Math.max(rz * lift, 24), 11 * lift, 0, 0, Math.PI * 2); c.fill(); }
+  for (const h of stops) { const d = t - h.t; if (d >= 0 && d < (h.shake ?? 0)) { const a = (h.amp ?? 8) * (1 - d / h.shake), f = Math.floor(t * 24), flip = f % 2 ? 1 : -1; shX += flip * a * (.6 + hash(f, 3) * .4); shY += -flip * a * .6 * (.4 + hash(f, 7) * .6); } }
+  ink.push(x, y, scale, flip); const keepW = ink.weight; ink.weight = Math.max(.42, Math.min(1.15, scale ** .85)) * weightK;
+  if (shadow) { const c = ink.ctx, rz = spec.body.hip * 1.5, lift = clamp(1 - sk.pelvis[1] / (spec.body.thigh + spec.body.shin) * .25), sl = ink.light, cx0 = (sk.lf.a[0] + sk.rf.a[0]) / 2; c.save(); c.globalAlpha = .34 * lift; c.fillStyle = ink.shadowColor ?? '#281830'; c.beginPath(); c.ellipse(cx0 - sl[0] * rz * .9, 9, Math.max(rz * 1.5 * lift, 34), 11 * lift, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = .28 * lift; c.beginPath(); c.ellipse(cx0, 8, Math.max(rz * lift, 24), 9 * lift, 0, 0, Math.PI * 2); c.fill(); c.restore(); } // cast away from the light, in the scene's shadow colour
   ink.ctx.save(); ink.ctx.translate(shX / scale, shY / scale);
   // Smear: a fast limb draws a solid tapered wedge back along its path, attached to the limb as drawn.
   const frozen = (move.hits ?? []).some(h => t >= h.t - 1 / 24 && t < h.t + (h.stop ?? 0) + 2 / 24); // no smears on a held pose
@@ -88,9 +92,10 @@ export function drawAct(ink, spec, name, t, { x = 0, y = 0, scale = 1, facing = 
     const k = Math.min(1, 42 / L); for (let i = 1; i < 4; i++) P[i] = [lerp(P[0][0], P[i][0], k), lerp(P[0][1], P[i][1], k)];
     ink.blob([{ pts: P, r: [R0 * .8, R0 * .68, R0 * .48, R0 * .16] }], col, { lw: 3.2 });
   }
-  const hold = {}; if (move.props?.r) hold.r = (i, h, e, layer) => drawProp(i, move.props.r, h, e, layer, spec);
+  const hold = {}; if (move.props?.r) hold[isFlipped(move, facing) ? 'l' : 'r'] = (i, h, e, layer) => drawProp(i, move.props.r, h, e, layer, spec, sk, isFlipped(move, facing) ? 1 : -1);
+  if (move.props?.book) hold.front = i => bookProp(i, sk, spec);
   if (move.props?.box) hold.r = (i, h, e, layer) => { if (layer === 'behind') boxProp(i, sk, spec); };
-  paintCharacter(ink, spec, sk, { t: clock, swing, hold });
+  paintSpec(ink, spec, sk, { t: clock, swing, hold });
   // effects anchored to the body, on top
   if (cues) for (const c of move.cues ?? []) {
     const d = (move.loop ? t % move.dur : t) - c.t, f = FX[c.fx]; if (!f) continue; const dur = f.dur ?? 1; if (d < 0 || d > dur) continue;

@@ -1,0 +1,7 @@
+import { Ink, createCharacter, solve, paintSpec, drawAct } from '/src/index.js';
+export function draw(c, W, H) { c.fillStyle = '#e9e2d0'; c.fillRect(0, 0, W, H);
+  const mk = (s, o) => createCharacter(s, { style: 'stick', acc: [], ...o }), list = [
+    [mk(1, { top: { type: 'tee', color: '#2f9e50' }, stickHair: 'none', bottom: { type: 'pants' } }), 'idle', .3, .5], [mk(2, { top: { type: 'tee', color: '#f08a3c' }, stickHair: 'none', acc: ['fedora'] }), 'shrug', .5, .7], [mk(3, { top: { type: 'dress', color: '#7a3fb0' }, hair: { color: '#1e1a2b' }, stickHair: 'bun' }), 'hand-on-hip', -.5, .8], [mk(4, { top: { type: 'none', color: '#000' }, stickHair: 'tuft', hair: { color: '#221733' } }), 'wave', .4, .9],
+    [mk(5, { top: { type: 'tunic', color: '#8a6242' }, stickHair: 'cap', hair: { color: '#3a2a2a' }, face: { facial: 'none' } }), 'cheer', .3, .5], [mk(6, { top: { type: 'tee', color: '#a0303f' }, stickPants: 1, bottom: { type: 'shorts', color: '#2c2c3a' }, stickHair: 'tuft', hair: { color: '#221733' } }), 'run', 1.2, .2], [mk(7, { top: { type: 'tee', color: '#e8574f' }, stickHair: 'pigtails', hair: { color: '#efe6d6' } }), 'cry', .2, .3], [mk(8, { top: { type: 'hivis', color: '#39394a' }, acc: ['hardhat'], stickHair: 'none' }), 'phone-call', .6, .5] ];
+  list.forEach(([s, m, f, t], i) => { const ink = new Ink(c, { t }); drawAct(ink, s, m, t, { x: (i % 4 + .5) * W / 4, y: (Math.floor(i / 4) + .94) * H / 2, scale: H / 2 / 640, facing: f, clock: t }); });
+}

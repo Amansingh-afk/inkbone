@@ -11,9 +11,9 @@ export function serve(port = 0) {
   });
   return new Promise(res => server.listen(port, '127.0.0.1', () => res({ server, url: `http://127.0.0.1:${server.address().port}` })));
 }
-export async function browser() {
+export async function browser(args = ['--disable-gpu'], env = null) {
   const { chromium } = await import('playwright-core');
   const base = path.join(os.homedir(), '.cache/ms-playwright'), C = fs.readdirSync(base).filter(d => /^chromium-\d+$/.test(d)).sort().pop();
-  return chromium.launch({ executablePath: path.join(base, C, 'chrome-linux64/chrome'), args: ['--disable-gpu'] });
+  return chromium.launch({ executablePath: path.join(base, C, 'chrome-linux64/chrome'), args, ...(env ? { env: { ...process.env, ...env } } : {}) });
 }
 export const savePng = (file, b64) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, Buffer.from(b64, 'base64')); };
