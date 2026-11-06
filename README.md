@@ -13,7 +13,7 @@ node tools/render.mjs reel --mp4      # showreel at records/reel/out.mp4
 node tools/check.mjs                  # errors, determinism, random characters
 ```
 
-Rendering needs Playwright's Chromium, plus ffmpeg for video.
+Rendering needs Playwright's Chromium, plus ffmpeg for video. Video settings are in `tools/encode.mjs`: they keep soft gradients from breaking into bands.
 
 ## What's in it
 

@@ -6,7 +6,7 @@
 //   --still T     one frame at T seconds to records/<what>/still.png
 //   --silhouette / --grey   the two checks every shot should pass
 //   --seed N --facing A --theme warm --palette fire --dur S --size WxH --fps 24 --opts '{"bodyType":"stout"}'
-import { serve, browser, savePng, ROOT } from './lib.mjs'; import fs from 'node:fs'; import path from 'node:path'; import { spawn } from 'node:child_process';
+import { serve, browser, savePng, ROOT } from './lib.mjs'; import { X264 } from './encode.mjs'; import fs from 'node:fs'; import path from 'node:path'; import { spawn } from 'node:child_process';
 const argv = process.argv.slice(2), what = argv[0]; const flag = n => { const i = argv.indexOf('--' + n); return i < 0 ? undefined : (argv[i + 1]?.startsWith('--') || argv[i + 1] === undefined ? true : argv[i + 1]); };
 if (!what) { console.log('usage: node tools/render.mjs move:wave|fx:fire|set:kitchen|character|reel [--sheet|--mp4|--still T] [--seed N]'); process.exit(1); }
 const [W, H] = (flag('size') ?? '1920x1080').split('x').map(Number), FPS = +(flag('fps') ?? 24), outDir = path.join(ROOT, 'records', what.replace(':', '/'));
@@ -22,7 +22,7 @@ else if (flag('mp4')) {
   const pages = [p0, ...await Promise.all(Array.from({ length: 7 }, mk))]; let next = 0;
   await Promise.all(pages.map(async p => { while (next < N) { const i = next++; fs.writeFileSync(path.join(fd, `f${String(i).padStart(5, '0')}.png`), Buffer.from(await grab(p, i / FPS), 'base64')); } }));
   const f = path.join(outDir, 'out.mp4');
-  await new Promise((res, rej) => spawn('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(fd, 'f%05d.png'), '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', f], { stdio: 'inherit' }).on('exit', x => x ? rej(new Error('ffmpeg ' + x)) : res()));
+  await new Promise((res, rej) => spawn('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(fd, 'f%05d.png'), ...X264, f], { stdio: 'inherit' }).on('exit', x => x ? rej(new Error('ffmpeg ' + x)) : res()));
   fs.rmSync(fd, { recursive: true, force: true }); console.log(f);
 } else {
   const n = +(flag('frames') ?? 12), b = await p0.evaluate(async ([n, dur, W, H]) => { const cols = 4, rows = Math.ceil(n / cols), tw = 480, th = tw * H / W, s = document.createElement('canvas'); s.width = cols * tw; s.height = rows * th; const x = s.getContext('2d'); for (let i = 0; i < n; i++) { pv.draw(ctxv, dur * i / Math.max(1, n - 1) * .999); x.drawImage(cv, (i % cols) * tw, Math.floor(i / cols) * th, tw, th); x.fillStyle = '#221733'; x.font = '700 16px sans-serif'; x.fillText((dur * i / Math.max(1, n - 1)).toFixed(2) + 's', (i % cols) * tw + 8, Math.floor(i / cols) * th + 20); } return s.toDataURL('image/png').split(',')[1]; }, [n, dur, W, H]);

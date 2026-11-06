@@ -23,15 +23,16 @@ export function drawHat(ink, kind, { R, H, hy, pitch = 0, color, band, lift = 0 
     const cr = K.crown(lat, 1.09, 1.03); shape(cr, { fill: c, shade: dk, shadeBy: 7, lw: 4.6 });
     for (const m of [-.9, .9, 0]) { const pts = []; for (let i = 0; i <= 6; i++) { const q = K.S(m - hy * 0, lat + (1.5 - lat) * i / 6, 1.09); if (q[2] > -R * .15) pts.push(q); } if (pts.length > 2) line(pts, 2.4, dk); } const b0 = K.S(0, 1.5, 1.09); ink.ell(b0[0], b0[1], R * .07, R * .05, { fill: dk, lw: 2.4 });
     if (facing >= .05) drawBrim();
-  } else if (kind === 'hardhat') {
-    const c = color ?? '#f4c542', dk = darken(c, .16); shape(K.lip(lat - .02, { x: 1.2, y: 1.1 }), { fill: dk, lw: 4.2 });
-    shape(K.crown(lat, 1.15, 1.04), { fill: c, shade: darken(c, .2), shadeBy: 8, lw: 4.8 });
-    for (const m of [0]) { const pts = []; for (let i = 0; i <= 8; i++) { const q = K.S(m, lat + .06 + (1.5 - lat) * i / 8, 1.15); pts.push(q); } const vis = pts.filter(q => q[2] > -R * .1); if (vis.length > 2) ink.line(vis.map(xy), { lw: R * .13, color: dk, even: 1 }); }
-    line(K.arc(lat + .16, 1.13), 2.4, dk);
-  } else if (kind === 'turban') {
-    const c = color ?? '#e8574f', dk = darken(c, .3), wrap = lon => .06 * sin(lon + .5); shape(K.crown(lat - .06, 1.24, 1.2, wrap), { fill: c, shade: darken(c, .2), shadeBy: 8, lw: 4.8 });
-    for (const [k, off] of [[.2, .5], [.42, 2.4], [.64, .5]]) ink.line(K.arc(lat - .06 + k, 1.24 - k * .16, 20, lon => .14 * sin(lon + off)).map(xy), { lw: 4, color: dk, even: 1 });
-    if (facing > .1) { const a = K.S(.3, lat, 1.25), b = K.S(.02, lat + .34, 1.27), d = K.S(.46, lat + .42, 1.23); shape([a, b, d], { fill: lighten(c, .14), lw: 3 }); }
+  } else if (kind === 'hardhat') { // round dome, a thin lip, a short peak in front, one raised ridge over the top
+    const c = color ?? '#f4c542', dk = darken(c, .2), lt = lighten(c, .22), ring = cos(lat) * 1.14, y = sin(lat) * H * 1.14, flat = (r, n = 40) => { const o = []; for (let i = 0; i < n; i++) { const lon = i / n * TAU; o.push(K.P(sin(lon) * R * r, y - H * .01, cos(lon) * R * r)); } return o; }, peak = () => { const inner = [], outer = [], n = 12, span = 1.15; for (let i = 0; i <= n; i++) { const a = -span + 2 * span * i / n; inner.push(K.P(sin(a) * R * ring, y, cos(a) * R * ring)); outer.push(K.P(sin(a) * R * (ring + .03), y - R * .05 * cos(a), cos(a) * R * (ring + .05 + .36 * cos(a * 1.1) ** 1.3))); } shape([...inner, ...outer.reverse()], { fill: dk, lw: 3.8 }); };
+    shape(flat(ring + .1), { fill: dk, lw: 3.8 }); if (facing < .05) peak();
+    shape(K.crown(lat, 1.14, 1.1), { fill: c, shade: dk, shadeBy: 8, lw: 4.8 });
+    const L = [], Rr = [], w = R * .09; for (let i = 0; i <= 12; i++) { const q = lat + .05 + (PI - 2 * lat - .1) * i / 12, n = rotY(rotX([0, sin(q), cos(q)], pitch), hy); if (n[2] < .02) continue; const yy = sin(q) * H * 1.25, zz = cos(q) * R * 1.15; L.push(K.P(-w, yy, zz)); Rr.push(K.P(w, yy, zz)); } if (L.length > 2 && abs(sin(hy)) < .85) shape([...L, ...Rr.reverse()], { fill: lt, lw: 2.8 });
+    if (facing >= .05) peak();
+  } else if (kind === 'turban') { // a pagri: wide cloth bands wrapped on a slant, meeting at a fold in front
+    const c = color ?? '#e8574f', dk = darken(c, .28), lt = lighten(c, .15), L0 = lat - .12, norm = lon => atan2(sin(lon), cos(lon)), base = K.crown(L0, 1.3, .86).map((q, i) => { if (i < 25) return q; const k = 1 + .012 * sin(i * 1.4); return [q[0] * k, q[1] * k, q[2]]; }), path = ink.shape(base.map(xy), { fill: c, shade: darken(c, .18), shadeBy: 8, lw: 5 }), C = ink.ctx; C.save(); C.clip(path);
+    const tilt = lon => .34 * sin(norm(lon) * .5 + .3); for (const [k, col] of [[.38, lt], [-.06, lt]]) { const A = K.arc(L0 + k, 1.33 - abs(k) * .1, 26, tilt), B = K.arc(L0 + k + .22, 1.33 - abs(k + .22) * .1, 26, tilt).reverse(); ink.shape([...A, ...B].map(xy), { fill: col, stroke: false }); } for (const k of [-.06, .16, .38, .6]) ink.line(K.arc(L0 + k, 1.33 - abs(k) * .1, 26, tilt).map(xy), { lw: 3.4, color: dk, even: 1 }); C.restore();
+    if (facing > .2) { const a = K.S(-.08, L0 + .03, 1.31), b = K.S(.42, L0 + .52, 1.3), d = K.S(-.42, L0 + .62, 1.28); ink.shape([d, a, b].map(xy), { fill: c, shade: lt, shadeBy: 3, lw: 3.4, hard: true }); }
   } else if (kind === 'fedora') {
     const c = color ?? '#6b4029', dk = darken(c, .28), drop = R * .1; shape(K.lip(lat + .02, { x: 1.34, y: 1.08 }, 40, drop), { fill: c, shade: dk, shadeBy: 6, lw: 4.6 });
     shape(K.crown(lat + .06, .94, 1.42), { fill: c, shade: dk, shadeBy: 7, lw: 4.6 }); ink.line(K.arc(lat + .06, .95).map(xy), { lw: R * .15, color: band ?? '#221733', even: 1 });

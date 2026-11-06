@@ -21,7 +21,7 @@ void main(){ float z = zAt(vUv), coc = clamp(abs(z - focus) / max(focus, .1) - .
  if (coc > .4) for (int i = 0; i < 10; i++) { float a = float(i) * 2.399963, r = sqrt(float(i) + .5) / 3.2; vec2 o = vec2(cos(a), sin(a)) * r * coc * px; c += texture2D(tColor, vUv + o).rgb; n += 1.; } c /= n;
  if (dot(blurDir, blurDir) > .0000001) { vec3 s = c; for (int i = 1; i <= 6; i++) { float f = float(i) / 6. - .5; s += texture2D(tColor, vUv + blurDir * f).rgb; } c = s / 7.; }
  c = mix(c * 12.92, 1.055 * pow(max(c, vec3(.0001)), vec3(1. / 2.4)) - .055, step(.0031308, c)); float g = dot(c, vec3(.3, .59, .11)); c = mix(vec3(g), c, sat) * tint; vec2 q = vUv - .5; c *= 1. - vign * smoothstep(.34, .86, length(q * vec2(1., .78)));
- float dn = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))) - .5; gl_FragColor = vec4(c + dn / 255., 1.); }`;
+ float dn = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))) - .5; gl_FragColor = vec4(c + dn * 2. / 255., 1.); }`;
 const SKY_FS = 'varying vec3 vD; uniform vec3 top, bot, disc, sunD; void main(){ vec3 d = normalize(vD); float h = smoothstep(-.04, .5, d.y); vec3 c = mix(bot, top, h); float s = dot(d, sunD); c = mix(c, disc, smoothstep(.9975, .9985, s)); c += disc * .22 * smoothstep(.93, 1., s); gl_FragColor = vec4(c, 1.); }', SKY_VS = 'varying vec3 vD; void main(){ vD = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }';
 const srgb = c => new THREE.Color(c);
 class World {
