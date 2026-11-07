@@ -247,6 +247,7 @@ function stripesOn(ink, path, rg, col, ac) {
 // ---------- head ----------
 const JAW = { round: [.98, .98, 1.12], square: [1.03, .96, 1.34], long: [.92, 1.14, 1.16], heart: [.88, 1.04, 1.02], wide: [1.1, .92, 1.26], egg: [.88, 1.16, 1.12, .98], block: [1.05, .94, 1.75, 1.02], pear: [1.2, 1, 1.15, .84], bean: [.84, 1.1, 1.05, 1.06] };
 const headLean = seed => (hash(seed, 5, 2) - .5) * .1; // each head sits at its own slight tilt
+const isDarkHairTone = c => { const n = parseInt(c.slice(1), 16); return (n >> 16 & 255) * .3 + (n >> 8 & 255) * .59 + (n & 255) * .11 < 90; };
 function headOutline(R, H, jaw, yaw, pitch, seed = 1) {
   const [jw, jh, jsq, crownW = .98] = JAW[jaw] ?? JAW.round, sy = sin(yaw), cy = abs(cos(yaw)), pts = [];
   const nose = sy * R * .1, crown = -sy * R * .06, asym = (hash(seed, 3, 1) - .5) * .15; // one cheek fuller than the other, and the jaw bulges toward where the face turns
@@ -291,7 +292,7 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0) {
   if (fc === 'beard' || fc === 'stubble') {
     // Follows the jaw: sideburn at the ear, down the cheek, over the lip. It stops at the ears, so the back of the head stays clear.
     const top = lon => { const a = abs(lon); return a < .24 ? -.3 : a < .56 ? lerp(-.3, -.47, smooth((a - .24) / .32)) : a < 1.2 ? lerp(-.47, -.1, smooth((a - .56) / .64)) : lerp(-.1, .03, (a - 1.2) / .22); }, up = [], low = [];
-    for (let i = 0; i <= 36; i++) { const lon = -1.42 + 2.84 * i / 36, a = abs(lon), p = P(lon, top(lon)); if (p.z < -R * .1) continue; up.push([p.x, p.y]); const k = smooth(clamp((a - .98) / .44)), q = P(lon, lerp(-1.2, -.22, k), lerp(1.5, 1, k)); low.unshift([q.x, q.y]); }
+    for (let i = 0; i <= 36; i++) { const lon = -1.42 + 2.84 * i / 36, a = abs(lon), p = P(lon, top(lon)); if (p.z < -R * .1) continue; up.push([p.x, p.y]); const k = smooth(clamp((a - .8) / .62)), q = P(lon, lerp(-1.2, -.16, k), lerp(1.5, 1, k)); low.unshift([q.x, q.y]); }
     if (up.length > 2) {
       C.save(); C.clip(hp); C.fillStyle = fc === 'stubble' ? mix(skin, fcol, .3) : fcol; C.fill(ink.path([...up, ...low], { hard: true }));
       if (fc === 'beard') { // the lips show through, with no ring around them
@@ -299,6 +300,11 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0) {
         if (q.z > 0) { const wx = R * .46 * max(mo.w, .46) * clamp(cy, .55, 1) + R * .03, wy = H * (.05 + .19 * open), cx = q.x + sy * R * .1; C.fillStyle = mix(skin, '#b8503f', .28); C.fill(ink.path(ellipse(cx, q.y + H * .19 * open * .3, wx, wy, 22))); }
       }
       C.restore();
+      if (fc === 'beard') { // real hair: a tufted edge past the jaw and a few strands, so it isn't a flat mask
+        const edge = [], inner = []; for (let i = 0; i <= 12; i++) { const lon = -1.04 + 2.08 * i / 12, e = P(lon, -.72 - .3 * (1 - abs(lon)), i % 2 ? 1.05 : 1.15), g = P(lon, -.56); if (e.z > -R * .05) { edge.push([e.x, e.y]); inner.unshift([g.x, g.y]); } }
+        if (edge.length > 3) { ink.shape([...edge, ...inner], { fill: fcol, stroke: false, hard: true }); ink.line(edge, { lw: 3.6, hard: true }); }
+        const st = isDarkHairTone(fcol) ? lighten(fcol, .22) : darken(fcol, .22); C.save(); C.clip(hp); for (const lon of [-.72, -.38, .38, .72]) { const a0 = P(lon, -.62), b0 = P(lon * .92, -.86); if (a0.z > 0) ink.line([[a0.x, a0.y], [b0.x, b0.y]], { lw: 2.4, color: st }); } C.restore();
+      }
     }
   }
   // nose
@@ -423,11 +429,12 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null } 
       if (top.sleeve > .6) jointFolds(ink, a, e, h, b.armR * puffK, darken(col, .42));
       if (top.puff) { const P = sl.pts, n = P.length; for (const f of [.3, .62]) { const i = Math.floor(n * f), q = P[i], w = P[Math.min(n - 1, i + 1)], dx = w[0] - q[0], dy = w[1] - q[1], l = hypot(dx, dy) || 1, r = sl.r[i]; ink.line([[q[0] - dy / l * r, q[1] + dx / l * r], [q[0] + dx / l * 3, q[1] + dy / l * 3], [q[0] + dy / l * r, q[1] - dx / l * r]], { lw: 3, color: darken(col, .34) }); } }
     }
-    if (spec.acc.includes('watch') && s > 0) { const w = cut(tb, top.sleeve >= 1 ? 1 : .93); ink.blob([{ pts: w.pts.slice(-2), r: w.r.slice(-2).map(r => r * 1.14) }], spec.top.accent, { lw: 3 }); }
+    if (shape === 'none') { const n = tb.pts.length, from = Math.floor(n * .84), cf = { pts: tb.pts.slice(from), r: tb.r.slice(from).map(r => r * 1.3) }; if (cf.pts.length > 1) limbBand(ink, cf, top.skirt || spec.top.type === 'dress' ? col : spec.bottom.color); } // the wrist disappears into the pocket
+    if (shape !== 'none' && spec.acc.includes('watch') && s > 0) { const w = cut(tb, top.sleeve >= 1 ? 1 : .93); ink.blob([{ pts: w.pts.slice(-2), r: w.r.slice(-2).map(r => r * 1.14) }], spec.top.accent, { lw: 3 }); }
     if (hold && hold[s > 0 ? 'l' : 'r']) hold[s > 0 ? 'l' : 'r'](ink, h, eH, 'front');
   };
   const leg = (F, s) => {
-    const h = pr(F.h), k = pr(F.k), a = pr(F.a), tb = bend(h, k, a, b.legR * 1.02, b.legR * .82, b.legR * .62), B = spec.bottom, bareLeg = B.type === 'shorts' || B.type === 'skirt' || spec.top.type === 'dress', chappal = spec.shoes.type === 'sandal' || spec.shoes.type === 'slide';
+    const h = pr(F.h), k = pr(F.k), a = pr(F.a), tb = bend(h, k, a, b.legR * 1.02, b.legR * .82, b.legR * .62), B = spec.bottom, bareLeg = B.type === 'shorts' || B.type === 'skirt' || spec.top.type === 'dress', chappal = spec.shoes.type === 'sandal' || spec.shoes.type === 'slide', tucked = spec.shoes.type === 'boot' && B.tucked !== false && !bareLeg && ['pants', 'jeans', 'cargo', 'joggers'].includes(B.type);
     const tube = boilTube(ink, tb, seed + s * 13), P = footParts(spec, F);
     const calf = { pts: tube.pts, r: tube.r.map((r, i, all) => { const n = all.length, ki = n * .45, u = (i - ki) / (n - ki); return r * .9 * (1 + (i > ki ? .3 * sin(u * PI) ** 1.4 * (1 - u * .35) : 0)); }) };
     if (chappal) drawSlipperSole(ink, spec, F);
@@ -436,19 +443,20 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null } 
       else { ink.blob([calf], spec.skin, { shade: shadeOf(spec.skin) }); drawShoe(ink, spec, F); }
       if (B.type === 'shorts' && spec.top.type !== 'dress') { const pc = cut(tb, .56); hemTube(ink, boilTube(ink, { pts: pc.pts, r: pc.r.map((r, i, all) => r * (1.14 + .2 * i / all.length)) }, seed + s * 13), B.color); }
     } else {
-      if (chappal) { ink.blob(ankleItems(P, spec, true), spec.skin, { shade: shadeOf(spec.skin) }); drawToes(ink, spec, F); drawSlipperStrap(ink, spec, F); } else drawShoe(ink, spec, F);
+      if (chappal) { ink.blob(ankleItems(P, spec, true), spec.skin, { shade: shadeOf(spec.skin) }); drawToes(ink, spec, F); drawSlipperStrap(ink, spec, F); } else if (!tucked) drawShoe(ink, spec, F);
       if (B.type === 'dhoti') ink.blob([calf], spec.skin, { shade: shadeOf(spec.skin) });
       if (spec.top.type !== 'dress' && B.type !== 'skirt' && !(TOP[spec.top.type]?.skirt > .9)) {
-        const ty = B.type, fit = ty === 'dhoti' ? u => 1.3 + .95 * u ** 1.1 : ty === 'wide' ? u => 1.1 + 1.05 * u ** 1.5 : ty === 'joggers' ? u => 1.12 - .14 * u : ty === 'cargo' ? u => 1.12 + .22 * u ** 2 : u => 1.04 + .2 * u ** 3, fl = tb.r.map((r, i, all) => r * fit(i / (all.length - 1))), end = cut({ pts: tb.pts, r: fl }, ty === 'joggers' ? .96 : ty === 'dhoti' ? .8 : .985), T = boilTube(ink, end, seed + s * 13), cc = B.color, dk = darken(cc, .42);
+        const ty = B.type, fit = ty === 'dhoti' ? u => 1.3 + .95 * u ** 1.1 : ty === 'wide' ? u => 1.1 + 1.05 * u ** 1.5 : ty === 'joggers' ? u => 1.12 - .14 * u : ty === 'cargo' ? u => 1.12 + .22 * u ** 2 : u => 1.04 + .2 * u ** 3, fl = tb.r.map((r, i, all) => r * fit(i / (all.length - 1))), end = cut({ pts: tb.pts, r: fl }, tucked ? .8 : ty === 'joggers' ? .96 : ty === 'dhoti' ? .8 : .985), T = boilTube(ink, end, seed + s * 13), cc = B.color, dk = darken(cc, .42);
         hemTube(ink, T, cc);
         jointFolds(ink, h, k, a, b.legR * .9, dk);
         const n = T.pts.length, at0 = f => { const i = Math.min(n - 1, Math.floor(n * f)), q = T.pts[i], w = T.pts[Math.min(n - 1, i + 1)], dx = w[0] - q[0], dy = w[1] - q[1], l = hypot(dx, dy) || 1; return { q, ux: dx / l, uy: dy / l, nx: -dy / l, ny: dx / l, r: T.r[i] }; };
         if (ty === 'dhoti') { const g = at0(.5); ink.line([[g.q[0] - g.nx * g.r * .5, g.q[1] - g.ny * g.r * .5 - 18], [g.q[0], g.q[1]], [g.q[0] + g.nx * g.r * .3, g.q[1] + g.ny * g.r * .3 + 30]], { lw: 2.6, color: dk }); }
-        if (ty === 'jeans' && B.roll !== false) { const from = Math.floor(n * .88), cf = { pts: T.pts.slice(from), r: T.r.slice(from).map(r => r * 1.2) }; if (cf.pts.length > 1) limbBand(ink, cf, lighten(cc, .28)); }
+        if (ty === 'jeans' && B.roll !== false && !tucked) { const from = Math.floor(n * .88), cf = { pts: T.pts.slice(from), r: T.r.slice(from).map(r => r * 1.2) }; if (cf.pts.length > 1) limbBand(ink, cf, lighten(cc, .28)); }
         if (ty === 'jeans') { const P0 = T.pts.filter((_, i) => i % 3 === 0).map((q, i2) => { const g = at0(i2 * 3 / n); return [q[0] + g.nx * s * g.r * .55, q[1] + g.ny * s * g.r * .55]; }); ink.line(P0, { lw: 2, color: lighten(cc, .3), even: 1 }); const g = at0(.86); ink.line([[g.q[0] - g.nx * g.r * .8, g.q[1] - g.ny * g.r * .8], [g.q[0] + g.nx * g.r * .8, g.q[1] + g.ny * g.r * .8]], { lw: 2.4, color: dk, hard: true }); }
         if (ty === 'joggers') { const g = at0(.87); ink.line([[g.q[0] - g.nx * g.r, g.q[1] - g.ny * g.r], [g.q[0] + g.nx * g.r, g.q[1] + g.ny * g.r]], { lw: 3, hard: true }); }
         if (ty === 'cargo') { const g = at0(.42), w = g.r * .72, hh = g.r * .8, o = s * g.r * .46, cx = g.q[0] + g.nx * o, cy0 = g.q[1] + g.ny * o, Pp = (u, v) => [cx + g.nx * u + g.ux * v, cy0 + g.ny * u + g.uy * v]; ink.shape([Pp(-w, -hh), Pp(w, -hh), Pp(w, hh), Pp(-w, hh)], { fill: lighten(cc, .08), lw: 2.8, hard: true }); ink.shape([Pp(-w * 1.06, -hh), Pp(w * 1.06, -hh), Pp(w * 1.06, -hh * .28), Pp(-w * 1.06, -hh * .28)], { fill: lighten(cc, .16), lw: 2.6, hard: true }); }
       }
+      if (tucked) drawShoe(ink, spec, F); // the boot goes over the trouser leg
     }
   };
   const frontArm = A => { const armZ = (A.s[2] + A.e[2] + A.h[2]) / 3 - sk.chest[2]; const facing = cos(sk.chestYaw); return armZ > -6 || (abs(facing) < .55 && A.s[2] > sk.chest[2]); };
