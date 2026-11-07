@@ -74,7 +74,7 @@ export function anchorOf(spec, sk, at) { if (at === 'feet') return [(sk.lf.a[0] 
 
 // One character acting one move at position (x, y) on screen.
 export function drawAct(ink, spec, name, t, { x = 0, y = 0, scale = 1, facing = .55, flip = 1, travel = 0, overrides = null, cues = true, shadow = true, palette, from = null, clock = t, grade = null, weightK = 1 } = {}) {
-  const move = MOVES[name] ?? MOVES.idle, at = (u, overlap = true) => actingPose(move, Math.max(0, u), { facing, overrides, from, overlap }), pose = at(t);
+  const move = typeof name === 'object' ? name : MOVES[name] ?? MOVES.idle, at = (u, overlap = true) => actingPose(move, Math.max(0, u), { facing, overrides, from, overlap }), pose = at(t);
   // Thinking: the eyes get there first, a head turn takes a blink with it, and resting eyes make small darts.
   const turnYaw = p => (p.yaw ?? 0) + (p.twist ?? 0) * .25 + (p.headYaw ?? 0), ahead = turnYaw(at(t + 4 / 24)) - turnYaw(pose), win = Math.floor(clock / 1.3), dart = hash(spec.seed * 3 + 5, win, 3) > .55 ? (hash(spec.seed * 3 + 5, win, 7) - .5) * .34 : 0;
   pose.look = [clamp((pose.look?.[0] ?? 0) + Math.max(-.85, Math.min(.85, ahead * 1.7)) + dart, -1, 1), pose.look?.[1] ?? 0];

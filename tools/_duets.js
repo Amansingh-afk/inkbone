@@ -1,0 +1,4 @@
+// Every duet at key moments, on two pairs of bodies.
+import { Ink, CAST, DUETS, duetNames, drawDuet, asStyle } from '/src/index.js';
+const FRAMES = 5;
+export function draw(c, W, H, style, PAIRS = [['dude', 'neat'], ['bruiser', 'beanpole']]) { c.fillStyle = '#efe6d6'; c.fillRect(0, 0, W, H); const names = duetNames, rows = names.length * PAIRS.length, ch = H / rows, cw = W / FRAMES; names.forEach((n, r) => PAIRS.forEach(([a, b], p) => { const d = DUETS[n], y0 = (r * PAIRS.length + p) * ch; for (let i = 0; i < FRAMES; i++) { const t = d.dur * (i + .5) / FRAMES, ink = new Ink(c, { t }); c.save(); c.beginPath(); c.rect(i * cw, y0, cw, ch); c.clip(); const q = s => (style && style !== 'round' ? asStyle(CAST[s], style) : CAST[s]); drawDuet(ink, q(a), q(b), n, t, { x: (i + .5) * cw, y: y0 + ch * .95, scale: ch / 600 }); c.restore(); } c.fillStyle = '#221733'; c.font = '700 15px sans-serif'; c.fillText(n + ' ' + a + '/' + b, 6, y0 + 16); })); }

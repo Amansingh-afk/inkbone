@@ -1,5 +1,5 @@
 import { makePreview } from '../src/preview.js';
-import { MOVES, moveNames, FX, fxNames, setNames, THEMES, transitionNames, exprNames, PAL, BODIES, HAIRSTYLES, TOPS, comboCount, castNames, styleNames } from '../src/index.js';
+import { duetNames, MOVES, moveNames, FX, fxNames, setNames, THEMES, transitionNames, exprNames, PAL, BODIES, HAIRSTYLES, TOPS, comboCount, castNames, styleNames } from '../src/index.js';
 const $ = s => document.querySelector(s);
 const WORLD_NAMES = ['flat', 'office', 'police-station', 'village', 'canal', 'market', 'chai-stall'], CAM_NAMES = ['hold', 'push-in', 'pull-out', 'orbit', 'crane-up', 'follow', 'whip', 'fly-through'];
 let P3 = null; const load3D = async () => (P3 ??= await import('../src/stage3d/preview.js'));
@@ -7,6 +7,7 @@ const S = { time: 'day', tab: 'moves', look: 'round', seed: 4, facing: .6, theme
 const opts = () => { const o = {}; if (S.look !== 'round') o.style = S.look; if (S.bodyType) o.bodyType = S.bodyType; if (S.style) o.hair = { style: S.style }; if (S.top) o.top = { type: S.top }; return o; };
 const TABS = {
   moves: { items: () => moveNames, what: n => 'move:' + n, size: [320, 360], code: n => `drawAct(ink, createCharacter(${S.seed}${optStr()}), '${n}', t, { x, y, scale: 1.4, facing: ${S.facing} });` },
+  duets: { items: () => duetNames, what: n => 'duet:' + n, size: [420, 360], code: n => `drawDuet(ink, specA, specB, '${n}', t, { x, y, scale: 1.2 });` },
   cast: { items: () => castNames, what: n => 'cast:' + n, size: [320, 360], code: n => `drawAct(ink, CAST.${n}, 'idle', t, { x, y, scale: 1.4 });` },
   characters: { items: () => Array.from({ length: 24 }, (_, i) => S.seed + i), what: () => 'character', size: [320, 360], label: n => 'seed ' + n, seedOf: n => n, code: n => `createCharacter(${n}${optStr()})` },
   expressions: { items: () => exprNames, what: n => 'expression:' + n, size: [320, 300], code: n => `solve(spec, { yaw: ${S.facing}, expr: '${n}' })` },
@@ -25,7 +26,7 @@ function field(label, el) { const l = document.createElement('label'); l.textCon
 function sel(key, options, label, blank = 'any') { const s = document.createElement('select'); s.append(new Option(blank, '')); for (const o of options) s.append(new Option(o, o)); s.value = S[key]; s.onchange = () => { S[key] = s.value; build(); }; return field(label, s); }
 function controls() {
   const c = $('#controls'); c.textContent = ''; const t = S.tab;
-  if (['moves', 'characters', 'expressions', 'effects', 'sets'].includes(t)) {
+  if (['moves', 'duets', 'characters', 'expressions', 'effects', 'sets'].includes(t)) {
     const n = document.createElement('input'); n.type = 'number'; n.value = S.seed; n.onchange = () => { S.seed = +n.value; build(); }; c.append(field('seed', n));
     const b = document.createElement('button'); b.textContent = 'Shuffle'; b.onclick = () => { S.seed = 1 + Math.floor(Math.random() * 99999); build(); }; c.append(b);
   }

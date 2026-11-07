@@ -5,6 +5,7 @@ import { MOVES } from './moves/index.js';
 import { FX } from './fx/index.js';
 import { drawAct, totalDur, seatHeight } from './act.js';
 import { FREE_PROPS } from './props.js';
+import { DUETS, drawDuet, duetDur } from './duets.js';
 import { drawSet, drawSetLight, FLOOR } from './sets.js';
 import { drawReel, reelDuration } from './scene.js';
 import { REEL } from './reel.js';
@@ -24,6 +25,7 @@ export function makePreview({ what, seed = 3, facing = null, theme = 'warm', pal
     const s = spec(), m = MOVES[name]; if (!m) throw new Error('no move ' + name);
     return { dur: m.loop ? m.dur : totalDur(name) + .35, draw(c, t) { c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = bg; c.fillRect(0, 0, W, H); const ink = new Ink(c, { t }); const S = scale ?? H / 660; c.fillStyle = 'rgba(40,24,60,.07)'; c.fillRect(0, H * .9, W, H * .1); if (m.tags.includes('seated') && !m.tags.includes('contact')) FREE_PROPS.chair(ink, W / 2 - 14 * S, H * .94, S * seatHeight(s) / 128); drawAct(ink, s, name, t, { x: W / 2 + (m.tags.includes('comic') ? 0 : 0), y: H * .94, scale: S, facing: facing ?? .6 }); } };
   }
+  if (kind === 'duet') { const A = spec(), B = createCharacter(seed + 11, opts), D = DUETS[name]; if (!D) throw new Error('no duet ' + name); return { dur: duetDur(name) + (D.loop ? 0 : .35), draw(c, t) { c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = bg; c.fillRect(0, 0, W, H); const ink = new Ink(c, { t }); c.fillStyle = 'rgba(40,24,60,.07)'; c.fillRect(0, H * .9, W, H * .1); drawDuet(ink, A, B, name, t, { x: W / 2, y: H * .94, scale: scale ?? H / 720 }); } }; }
   if (kind === 'fx') {
     const f = FX[name]; if (!f) throw new Error('no effect ' + name); const full = !!f.full;
     return { dur: f.dur, draw(c, t) { c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = full ? '#232a5c' : bg; c.fillRect(0, 0, W, H); const ink = new Ink(c, { t }); const S = H / 400; ink.weight = Math.max(.5, Math.min(1, S)); if (full) { c.setTransform(W / 1920, 0, 0, H / 1080, 0, 0); f.draw(ink, Math.floor(t * 24) / 24, { palette: palette ?? f.palette, seed, w: 1920, h: 1080 }); } else f.draw(ink, Math.floor(t * 24) / 24, { x: W / 2, y: H * (['fire', 'portal', 'explosion', 'dust-puff', 'smoke-puff', 'shockwave', 'splash', 'lightning', 'hearts', 'zzz'].includes(name) ? .9 : .56), scale: S, palette: palette ?? f.palette, seed, height: H / S * .8 }); } };

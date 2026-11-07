@@ -4,6 +4,7 @@ import { poseAt } from '../src/act.js';
 import { solve, project as pr, rotY } from '../src/rig.js';
 import { MOVES } from '../src/moves/index.js';
 import { CAST, castNames } from '../src/cast.js';
+import { DUETS, solveDuet } from '../src/duets.js';
 const JUMP_OK = new Set(['zip-off', 'turn', 'punch', 'kick', 'double-take', 'scared-jump', 'jump', 'get-hit', 'slip', 'stamp', 'cheer']); // comedy and impact moves that snap on purpose
 const only = process.argv[2], FACINGS = [.6, -.6, 0], STEP = 1 / 12, d2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]), d3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 const local = (sk, v) => rotY([v[0] - sk.chest[0], v[1] - sk.chest[1], v[2] - sk.chest[2]], -sk.chestYaw);
@@ -27,3 +28,6 @@ for (const [name, r] of Object.entries(rows)) for (const [k, q] of Object.entrie
 out.sort((a, b) => b.share * (1 + b.worst) - a.share * (1 + a.worst));
 for (const o of out) console.log(`${o.name.padEnd(13)} ${o.k.padEnd(30)} ${(o.share * 100).toFixed(0).padStart(3)}% worst ${o.worst.toFixed(2)} ${o.who} f${o.facing} t${o.t}`);
 console.log(`\n${Object.keys(MOVES).length} moves on ${castNames.length} cast at ${FACINGS.length} angles: ${out.length} faults in ${new Set(out.map(o => o.name)).size} moves`);
+// Duets: does each hand reach what it should, on every pair of cast members?
+console.log('\nduets: frames where a hand misses its target by more than most of a hand');
+for (const [name, d] of Object.entries(DUETS)) { if (only && only !== name) continue; let n = 0, bad = 0, worst = 0, who = ''; for (const a of castNames) for (const b of castNames) { if (a === b) continue; const A = CAST[a], B = CAST[b]; for (let t = 0; t < d.dur; t += STEP) { const S = solveDuet(d, A, B, t); [[A, d.a, 0], [B, d.b, 1]].forEach(([spec, mv, i]) => { for (const h of ['r', 'l']) { if (S.over[i][h + 'TargetW'] !== 1) continue; const sk = solve(spec, { ...poseAt(mv, t, { facing: d.face[i] }), ...S.over[i] }), H = (h === 'r' ? sk.R : sk.L).h, T = S.over[i][h + 'Target'], miss = Math.hypot(H[0] - sk.root[0] - T[0], H[1] - T[1], H[2] - sk.root[2] - T[2]); n++; if (miss > spec.body.handR * .8) bad++; if (miss > worst) { worst = miss; who = a + '/' + b; } } }); } } console.log(`${name.padEnd(13)} ${String(Math.round(bad / (n || 1) * 100)).padStart(3)}% worst ${worst.toFixed(0)} ${worst ? who : ''}`); }

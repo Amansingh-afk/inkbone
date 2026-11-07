@@ -5,6 +5,7 @@ import { Ink } from './core.js';
 import { drawSet, drawSetLight, drawForeground, FLOOR, THEMES, LIGHTS } from './sets.js';
 import { applyCam, camAt, drawTransition } from './stage.js';
 import { drawAct, groundSpeed } from './act.js';
+import { DUETS, drawDuet } from './duets.js';
 import { MOVES } from './moves/index.js';
 import { FX } from './fx/index.js';
 import { FREE_PROPS, } from './props.js';
@@ -14,7 +15,7 @@ const SHADOW_TINT = { warm: '#54264a', ochre: '#54264a', cabin: '#3f2342', pink:
 export function actorState(actor, T) {
   let x = actor.x ?? 960, facing = actor.facing ?? .55, seg = { at: 0, move: 'idle' }, start = 0, from = null;
   const scale = actor.scale ?? 1.4, track = actor.track ?? [];
-  const enter = (next, at) => { from = at > 0 ? { move: seg.move, local: at - start, facing, overrides: seg.overrides ?? actor.overrides, from } : null; seg = next; start = at; };
+  const enter = (next, at) => { from = at > 0 ? { move: seg.move, local: at - start, facing, overrides: seg.overrides ?? actor.overrides, from } : null; seg = next.move ? next : { ...next, move: 'idle' }; start = at; };
   for (let i = 0; i < track.length; i++) {
     const s = track[i]; if (T < s.at) break;
     enter(s, s.at); if (s.facing !== undefined) facing = s.facing;
@@ -39,7 +40,9 @@ export function drawScene(ctx, scene, t, { boil = 1, lw = 7 } = {}) {
   ctx.save(); ctx.globalAlpha = scene.haze ?? .07; ctx.fillStyle = T.wall; ctx.fillRect(-50, -50, 2020, 1180); ctx.restore();
   setShadowTint(SHADOW_TINT[typeof scene.theme === 'string' ? scene.theme : ''] ?? '#3a2148');
   const A = (scene.actors ?? []).map(a => ({ a, s: actorState(a, t) })).sort((p, q) => (p.a.y ?? 0) - (q.a.y ?? 0));
-  for (const { a, s } of A) drawAct(ink, a.spec, s.seg.move, s.local, { x: s.x, y: a.y ?? FLOOR + 40, scale: s.scale, facing: s.facing, overrides: s.seg.overrides ?? a.overrides, from: s.from, clock: t, grade: grade || null });
+  // A duet: the actor whose track says { at, duet: 'handshake', with: 'theirId' } stays put and the other joins them for its length.
+  const taken = new Set(A.filter(q => q.s.seg.duet).map(q => q.s.seg.with));
+  for (const { a, s } of A) if (s.seg.duet) { const b = (scene.actors ?? []).find(q => q.id === s.seg.with), d = DUETS[s.seg.duet], side = d.lead === 'a' ? -1 : 1; drawDuet(ink, a.spec, b.spec, s.seg.duet, s.local, { x: s.x + side * d.gap(a.spec, b.spec) / 2 * s.scale, y: a.y ?? FLOOR + 40, scale: s.scale, clock: t, grade: grade || null }); } else if (!taken.has(a.id)) drawAct(ink, a.spec, s.seg.move, s.local, { x: s.x, y: a.y ?? FLOOR + 40, scale: s.scale, facing: s.facing, overrides: s.seg.overrides ?? a.overrides, from: s.from, clock: t, grade: grade || null });
   for (const f of scene.fx ?? []) { const d = t - f.t, def = FX[f.fx]; if (d < 0 || (!def.loop && d > def.dur) || (f.until && t > f.until)) continue; def.draw(ink, Math.floor(d * 24) / 24, { ...f, x: f.x, y: f.y, scale: f.scale ?? 1, palette: f.palette ?? def.palette, seed: f.seed ?? 1, size: f.size, w: 1920, h: 1080 }); }
   if (scene.lit !== false) drawSetLight(ctx, scene.set ?? 'plain', scene.theme ?? 'warm');
   for (const f of scene.fg ?? []) drawForeground(bg, f, theme, camAt(scene.cam ?? {}, t).x);

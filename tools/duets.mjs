@@ -1,0 +1,5 @@
+// node tools/duets.mjs out.png [style] [a/b] : every duet at five moments, on one pair of bodies or the default two. Look at this after any change to duets.
+import { serve, browser, savePng } from './lib.mjs'; import path from 'node:path';
+const { server, url } = await serve(); const br = await browser(); const p = await br.newPage(); p.on('pageerror', e => { console.error('PAGE ERROR', e.message); process.exitCode = 1; }); await p.goto(url + '/tools/blank.html');
+const pairs = process.argv[4] ? [process.argv[4].split('/')] : undefined, H = pairs ? 2200 : 3200;
+const b = await p.evaluate(async ([style, pairs, H]) => { const m = await import('/tools/_duets.js'); const c = document.createElement('canvas'); c.width = 1800; c.height = H; m.draw(c.getContext('2d'), 1800, H, style, pairs); return c.toDataURL('image/png').split(',')[1]; }, [process.argv[3] === 'round' ? null : process.argv[3] ?? null, pairs, H]); savePng(path.resolve(process.argv[2] ?? 'records/duets.png'), b); await br.close(); server.close();

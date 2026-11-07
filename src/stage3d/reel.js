@@ -29,5 +29,8 @@ export const REEL3D = [
     actors: [{ id: 'k', spec: stick(farmer), pos: [-.4, 1.9], track: [{ at: 0, move: 'wave', facing: .2 }, { at: 2, move: 'shrug', facing: .4 }, { at: 3.6, move: 'cheer', facing: .3 }] }, { id: 's', spec: stick(sariwoman), pos: [.6, 2.1], track: [{ at: 0, move: 'facepalm', facing: -.5 }, { at: 2.6, move: 'dance', facing: -.2 }] }, { id: 'd', spec: stick(dude), pos: [-1.5, 2.4], track: [{ at: 0, move: 'run', to: [2.2, 2.6] }] }] },
   { world: 'office', time: 'sunset', dur: 6, cam: [{ at: 0, dur: 3, move: 'hold', pos: [.2, .8, 4], target: [0, .5, 0] }, { at: 3, dur: .5, move: 'whip', pos: [0, .8, 3.6], from: [-1.2, .55, -.6], to: [1.4, .55, -.6] }, { at: 3.5, dur: 2.5, move: 'hold', pos: [1, .7, 2.2], target: [1.4, .5, -.4], drift: .03 }],
     actors: [{ id: 'w', spec: worker, pos: [-1.2, -.18], track: [{ at: 0, move: 'gas-cut', facing: .6 }] }, { id: 'b', spec: boss, pos: [1.4, -.1], track: [{ at: 0, move: 'read', facing: .1 }, { at: 3.4, move: 'yawn', facing: .1 }] }] },
+  // two people touching: the first actor's track starts each duet, and the second joins them
+  { world: 'market', time: 'day', seed: 3, dur: 9, cam: [{ at: 0, dur: 9, move: 'hold', pos: [0, .72, 3.6], target: [.1, .5, 0] }],
+    actors: [{ id: 'd', spec: dude, pos: [-.3, .2], track: [{ at: 0, duet: 'handshake', with: 'n' }, { at: 2.4, duet: 'give-take', with: 'n' }, { at: 5.3, duet: 'slap', with: 'n' }, { at: 7.2, duet: 'shoulder-pat', with: 'n' }] }, { id: 'n', spec: neat, pos: [.3, .2] }] },
 ];
 export const reelDuration3D = () => REEL3D.reduce((a, s) => a + s.dur, 0);

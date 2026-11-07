@@ -116,6 +116,8 @@ Cameras: keys glide by default. Scenes slowly push in (`push`, 0 turns it off). 
 
 Styles switch with `createCharacter(seed, { style: 'stick' })` or `asStyle(spec, 'stick')`. New looks use `registerStyle` and must stay cartoonish. Never copy characters from reference images.
 
+For two people touching, use a duet: `drawDuet(ink, a, b, 'handshake', t, { x, y, scale })`, or `{ at, duet: 'handshake', with: 'theirId' }` on an actor's track. See `src/duets.js`.
+
 For 2D characters in a 3D world, see the README section and `src/stage3d/reel.js` for working scenes. In 3D, `face` and walking direction are world angles, while `facing` stays relative to the camera. Always run `node tools/check3d.mjs`: it warns about blocked or unreadable shots. Worlds are generic: film-specific places and story stay in the film's folder.
 
 ## Add an effect
