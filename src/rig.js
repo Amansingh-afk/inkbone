@@ -55,7 +55,7 @@ export function solve(spec, pose) {
     const r = ik(S, T, b.upper * k, b.fore * k, pole); return { s: S, e: r.mid, h: r.end, aim: chF([s * aim[0], aim[1], aim[2]]), aimW, faceW };
   };
   const legIK = (s, f, toe, st = 0, pitch = 0, tgt = [0, 0, 0], tgtW = 0) => {
-    const k = 1 + st, H = hip(s), A = add(root, rotY([s * (b.hip * .62 + f[0] * leg), b.footH + f[1] * leg * k, f[2] * leg * k], Y));
+    const k = 1 + st, H = hip(s), turn = Math.abs(Math.sin(2 * Y)), A = add(root, rotY([s * (b.hip * (.62 + .34 * turn) + f[0] * leg), b.footH + f[1] * leg * k, f[2] * leg * k], Y)); // at three-quarter the stride swings across the body on screen, so the feet part a little wider to keep both legs visible
     const A2 = tgtW > 0 ? add(mul(A, 1 - tgtW), mul(add(root, tgt), tgtW)) : A, pole = rotY(norm([s * .22, .1, 1]), Y);
     const r = ik(H, A2, b.thigh * k, b.shin * k, pole); return { h: H, k: r.mid, a: r.end, toe: Y + s * (.1 + toe), pitch };
   };

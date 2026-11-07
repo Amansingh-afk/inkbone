@@ -48,7 +48,7 @@ export function hand(ink, wrist, dir, shape, skin, side, r, wristR, clipU = -.02
   const curled = (v, w = .23) => items.push({ pts: [P(.92, v), P(1.2, v)], r: [r * w, r * w * .96] });
   const T = (a, m, e, r0 = .34, r1 = .27, r2 = .2) => { const pts = [], rad = []; for (let i = 0; i <= 6; i++) { const f = i / 6, k = 1 - f; pts.push(P(k * k * a[0] + 2 * k * f * m[0] + f * f * e[0], k * k * a[1] + 2 * k * f * m[1] + f * f * e[1])); rad.push(r * (f < .5 ? lerp(r0, r1, f * 2) : lerp(r1, r2, f * 2 - 1))); } return { pts, r: rad }; };
   let over = null, crease = null;
-  if (shape === 'relax') { F(.45, .5, .6, .08); F(.15, .17, .72, .08); F(-.15, -.14, .66, .06); F(-.44, -.45, .5, .04); items.push(T([.42, .42], [.72, .86], [1.04, .9])); lines.push([[1.14, .3], [1.42, .33]], [[1.14, 0], [1.46, .02]], [[1.14, -.29], [1.38, -.29]]); crease = [[.92, .6], [.62, .44]]; }
+  if (shape === 'relax') { F(.45, .58, .8, .16); F(.15, .2, .96, .16); F(-.15, -.16, .9, .12); F(-.44, -.54, .7, .08); items.push(T([.42, .42], [.72, .9], [1.02, .98])); crease = [[.92, .6], [.62, .44]]; } // loose and slightly open: a resting hand, not a fist
   else if (shape === 'flat') { F(.42, .42, .98); F(.14, .14, 1.12); F(-.14, -.14, 1.04); F(-.42, -.42, .82); items.push(T([.42, .42], [.78, .78], [1.22, .74])); lines.push([[1.2, .28], [1.8, .28]], [[1.2, 0], [1.9, 0]], [[1.2, -.28], [1.72, -.28]]); crease = [[1, .6], [.66, .44]]; }
   else if (shape === 'open') { F(.45, 1, .98, -.06, .22); F(.15, .38, 1.14, 0, .22); F(-.15, -.24, 1.06, 0, .22); F(-.44, -.86, .84, .06, .21); items.push(T([.42, .42], [.68, 1], [.94, 1.5])); }
   else if (shape === 'spread') { F(.45, 1.3, .96, -.08, .22); F(.15, .52, 1.14, 0, .22); F(-.15, -.36, 1.08, 0, .22); F(-.44, -1.2, .86, .08, .21); items.push(T([.42, .42], [.58, 1.2], [.6, 1.82])); }
@@ -362,13 +362,15 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
     const lim = R * .94, inner = [clamp(ex - s * bw * .95, -lim, lim), by + ang * bw], outer = [clamp(ex + s * bw * .95, -lim, lim), by - ang * bw * .75];
     ink.blob([{ pts: ink.boil([inner, [ex, by - 1.5 + (ang * bw * .1)], outer], false, seedH + s), r: [R * .062 * (f.browW ?? 1), R * .058 * (f.browW ?? 1), R * .034 * (f.browW ?? 1)] }], spec.hair.style === 'bald' || spec.hair.style === 'hijab' ? '#3a2a2a' : (spec.hair.color === '#e9e6ea' ? '#b7b4bd' : spec.hair.color), { lw: 0 });
   };
-  if (face && !faceOnly) {
+  // the nose goes under the eyes, so its base never bites into them; behind glasses it goes on top, or the big eyes would hide it
+  const drawNose = () => { if (!face || faceOnly) return;
     // the nose goes under the eyes, so its base never bites into them
     const nx = nq.x + sy * R * ns[2] * .75, ny = nq.y + R * ns[2] * .12;
     const tipR = R * ns[1] * (noseT === 'pointy' ? .62 : noseT === 'long' ? .82 : 1), baseR = R * max(ns[0], ns[1]) * .95;
     ink.blob([{ pts: [[nq.x, nq.y], [nx, ny]], r: [baseR, tipR] }], skin, { lw: 3.6 });
     const towardFace = [-sy * .85, -cy * .75], fl = hypot(towardFace[0], towardFace[1]) || 1; C.fillStyle = skin; C.beginPath(); C.arc(nq.x + towardFace[0] / fl * baseR * .82, nq.y + towardFace[1] / fl * baseR * .82, baseR * 1.06, 0, TAU); C.fill();
-  }
+    };
+  if (!wearsLens) drawNose();
   if (face) { eye(-1, expr.lidR, expr.browR); eye(1, expr.lidL, expr.browL); }
   if (face && cy > .0) {
     // mouth
@@ -398,12 +400,12 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
     }
     if (spec.acc.includes('bindi')) { const q = P(0, .3); ink.ell(q.x, q.y, R * .05, R * .06, { fill: '#c9213f', stroke: false }); }
   }
-  if (spec.acc.includes('glasses') || spec.acc.includes('shades')) {
+  if (spec.acc.includes('glasses') || spec.acc.includes('shades')) { C.save(); C.clip(hp); // lenses stay on the face
     const dark = spec.acc.includes('shades'), Ps = [-1, 1].map(s => [s, P(s * eyeGap, eyeLat), cos(s * eyeGap + hy)]);
     let prev = null;
     const eyeK2 = { round: 1, small: .78, wide: 1.14, tired: .94 }[f.eyes] ?? 1, bridge = [];
     for (const [s, q, fac] of Ps) {
-      if (fac < .12) continue; const sx = clamp(fac, .36, 1), pk = eyePop(sx), rx = (R * .25 * eyeK2 * pk + R * .05) * sx, ry = H * .3 * eyeK2 * pk * lerp(.8, 1, sx) + H * .045, eyeW = R * .25 * eyeK2 * sx * pk, gx = clamp(q.x, -R * .95 + eyeW, R * .95 - eyeW);
+      if (fac < .32) continue; const sx = clamp(fac, .32, 1), pk = eyePop(sx), rx = (R * .25 * eyeK2 * pk + R * .05) * sx * lerp(.75, 1, sx), ry = H * .3 * eyeK2 * pk * lerp(.8, 1, sx) + H * .045, eyeW = R * .25 * eyeK2 * sx * pk, gx = clamp(q.x, -R * .95 + eyeW, R * .95 - eyeW);
       if (dark) ink.ell(gx, q.y, rx, ry, { fill: '#22202e', lw: 4 });
       else { C.save(); C.globalAlpha = .2; C.fillStyle = '#cfeaf5'; C.beginPath(); C.ellipse(gx, q.y, rx, ry, 0, 0, TAU); C.fill(); C.restore(); ink.stroke(ink.path(ellipse(gx, q.y, rx, ry, 26)), 3.6); }
       C.strokeStyle = dark ? '#6a6882' : 'rgba(255,255,255,.85)'; C.lineWidth = 2.6 / ink.sc; C.beginPath(); C.moveTo(gx - rx * .55, q.y - ry * .1); C.lineTo(gx - rx * .15, q.y - ry * .62); C.stroke();
@@ -411,7 +413,9 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
       bridge.push([gx, q.y, rx, ry]);
     }
     if (bridge.length === 2) { const [a, c2] = bridge[0][0] < bridge[1][0] ? bridge : [bridge[1], bridge[0]]; const y = (a[1] + c2[1]) / 2 - min(a[3], c2[3]) * .2; if (c2[0] - c2[2] > a[0] + a[2]) ink.line([[a[0] + a[2], y], [c2[0] - c2[2], y]], { lw: 3.2, even: 1 }); }
+    C.restore();
   }
+  if (wearsLens) drawNose();
   if (faceOnly) { ink.pop(); return; }
   drawHairFront(ink, spec, sk, { P, hp, swing });
   if (hats) hatsOn(ink, spec, hy, pitch);
