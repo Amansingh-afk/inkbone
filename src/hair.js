@@ -9,7 +9,7 @@ const { sin, cos, abs, atan2, hypot, PI, max } = Math;
 const T = (lon, lat, len, w, dir = null, curl = [0, 0, 0], o = {}) => ({ lon, lat, len, w, dir, curl, ...o });
 // A spike out of the scalp, leaning sideways as it goes.
 const spike = (lon, lat, len, w, lean = 0, o = {}) => { const n = [sin(lon) * cos(lat), sin(lat), cos(lon) * cos(lat)]; return T(lon, lat, len, w, [n[0] + lean, n[1], n[2]], [lean * .5, -.12, 0], o); };
-const fringe = (lon, len, w, lean = 0, lat = .68) => T(lon, lat, len, w, [lean, -.72, .6], [lean * .35, -.34, -.1]);
+const fringe = (lon, len, w, lean = 0, lat = .68) => T(lon, lat, len, w, [lean, -.72, .6], [lean * .35, -.34, -.1], { fringe: 1 });
 const flip = l => ({ ...l, lon: -l.lon, dir: l.dir && [-l.dir[0], l.dir[1], l.dir[2]], curl: [-l.curl[0], l.curl[1], l.curl[2]] });
 // A big lock from the parting across the forehead and down the far side of the face.
 const swoop = (s = 1, len = 1.42, w = .3) => T(s * .42, .92, len, w, [-s * 1, -.1, .5], [-s * .08, -.86, -.12]);
@@ -43,10 +43,10 @@ const STICK_DROP = 1.2;
 // How far the hips are from the head's centre, measured in 3D so it holds through bends and sits: round hair never hangs past them.
 const waistBelow = sk => Math.hypot(sk.pelvis[0] - sk.head[0], sk.pelvis[1] - sk.head[1], sk.pelvis[2] - sk.head[2]);
 export function hairLocks(spec, sk, swing) {
-  const Hh = HAIR[spec.hair.style] ?? HAIR.crop, R = spec.body.headR, H = spec.body.headH, hy = sk.headYaw, pitch = sk.headPitch, front = [], back = [], P = headPoint(R, H, hy, pitch), toScreen = v => { const q = rotY(rotX(v, pitch), hy); return [q[0], -q[1] + q[2] * .04]; }, hatted = HATS.some(k => spec.acc.includes(k));
+  const Hh = HAIR[spec.hair.style] ?? HAIR.crop, R = spec.body.headR, H = spec.body.headH, hy = sk.headYaw, pitch = sk.headPitch, front = [], back = [], P = headPoint(R, H, hy, pitch), toScreen = v => { const q = rotY(rotX(v, pitch), hy); return [q[0], -q[1] + q[2] * .04]; }, hatted = HATS.some(k => spec.acc.includes(k)), lens = spec.acc.includes('glasses') || spec.acc.includes('shades');
   for (const l of Hh.tufts ?? []) {
     if (hatted && l.lat >= .56 && !l.solid) continue;
-    const root = P(l.lon, l.lat, 1.02), nrm = [sin(l.lon) * cos(l.lat), sin(l.lat), cos(l.lon) * cos(l.lat)], D = toScreen(l.dir ?? nrm), Cu = toScreen(l.curl), L = l.braid ? l.len * R : Math.min(l.len * R, spec.style === 'stick' ? R * (STICK_DROP - .2) : waistBelow(sk) - root.y - R * .3), n = 12, c = [], pts = [];
+    const root = P(l.lon, l.lat, 1.02), nrm = [sin(l.lon) * cos(l.lat), sin(l.lat), cos(l.lon) * cos(l.lat)], D = toScreen(l.dir ?? nrm), Cu = toScreen(l.curl), L = l.braid ? l.len * R : Math.min(l.len * R * (lens && l.fringe ? .55 : 1), spec.style === 'stick' ? R * (STICK_DROP - .2) : waistBelow(sk) - root.y - R * .3), n = 12, c = [], pts = [];
     for (let i = 0; i <= n; i++) { const u = i / n, sw = swing * L * .22 * u * u; c.push([root.x + (D[0] * u + Cu[0] * u * u) * L + sw, root.y + (D[1] * u + Cu[1] * u * u) * L]); }
     const wAt = u => l.w * R * (l.round ? sin(PI * lerp(.18, 1, u)) ** .5 : l.wide ? (u < .4 ? lerp(.7, 1.15, u / .4) : ((1 - u) / .6) ** .75 * 1.15) : (u < .22 ? lerp(.72, 1, u / .22) : ((1 - u) / .78) ** .85));
     const side = sg => { for (let k = 0; k <= n; k++) { const i = sg > 0 ? k : n - k, a = c[max(0, i - 1)], bb = c[Math.min(n, i + 1)], dx = bb[0] - a[0], dy = bb[1] - a[1], d = hypot(dx, dy) || 1, hw = wAt(i / n); pts.push([c[i][0] - dy / d * hw * sg, c[i][1] + dx / d * hw * sg]); } };

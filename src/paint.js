@@ -224,6 +224,8 @@ const WRAPS = ['hivis', 'sari'];
 export const DHOTI_BORDER = '#a33a2c';
 // The dhoti's gathered front pleats, a fan from the waist to between the shins.
 export function dhotiPleats(ink, spec, sk, cc) { const b = spec.body, Sg = surface(spec, sk), t0 = Sg('hip', -.1, 6), t1 = Sg('hip', .2, 6), k = [pr(sk.lf.k), pr(sk.rf.k)], a = [pr(sk.lf.a), pr(sk.rf.a)], mid = q => [(q[0][0] + q[1][0]) / 2, (q[0][1] + q[1][1]) / 2], km = mid(k), am = mid(a), y = lerp(km[1], am[1], .62), x = lerp(km[0], am[0], .62), w = b.legR * 1.05, p = [t0, t1, [x + w, y], [x + w * .3, y + 7], [x - w * .4, y - 2], [x - w, y + 4]]; ink.shape(p, { fill: lighten(cc, .04), shade: darken(cc, .1), shadeBy: 4, lw: 3 }); for (let i = 1; i < 4; i++) { const u = i / 4; ink.line([[lerp(t0[0], t1[0], u), lerp(t0[1], t1[1], u) + 4], [lerp(x - w, x + w, u), y - 2]], { lw: 2.2, color: darken(cc, .22) }); } }
+// A kurta or Nehru jacket is split at the sides above the hem, so the bottom swings loose instead of reading as one stiff block.
+export function hemSlits(ink, spec, rg, col, path) { if (!['kurta', 'nehru'].includes(spec.top.type) || !rg.skirt) return; const r = rg.skirt, top = rg.hip.c[1], L = (r.c[1] - top) * .5, C = ink.ctx; C.save(); C.clip(path); for (const q of [1, -1]) { const x0 = r.c[0] + q * r.w * .97, x1 = lerp(r.c[0] + q * r.w, rg.hip.c[0] + q * rg.hip.w, .5) * 1 - q * 4; ink.shape([[x0 + q * 6, r.c[1] + 4], [x0 - q * 9, r.c[1] + 4], [x1, r.c[1] - L]], { fill: darken(col, .28), stroke: false, hard: true }); ink.line([[x0 - q * 9, r.c[1] + 2], [x1, r.c[1] - L]], { lw: 3, hard: true }); } C.restore(); }
 // A wide border along the bottom of a long garment, clipped to it.
 function hemBorder(ink, rg, color, h = 16) { const r = rg.skirt; if (!r) return; ink.shape([[r.c[0] - r.w * 1.6, r.c[1] - h], [r.c[0] + r.w * 1.6, r.c[1] - h], [r.c[0] + r.w * 1.6, r.c[1] + 30], [r.c[0] - r.w * 1.6, r.c[1] + 30]], { fill: color, stroke: false }); ink.line([[r.c[0] - r.w * 1.6, r.c[1] - h], [r.c[0] + r.w * 1.6, r.c[1] - h]], { lw: 2.6, color: darken(color, .3), even: 1 }); }
 export function detailsBack(ink, spec, sk, rg, col, path) {
@@ -329,8 +331,8 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
   const wearsLens = spec.acc.includes('glasses') || spec.acc.includes('shades'), eyePop = sx => lerp(1, min(expr.pop ?? 1, wearsLens ? 1.14 : 9), sx * sx);
   const eye = (s, lid, browP) => {
     const lon = s * eyeGap, q = P(lon, eyeLat), facing = cos(lon + hy);
-    if (facing < .12) return;
-    const sx = clamp(facing, .36, 1), popK = eyePop(sx), rx = R * .25 * eyeK * sx * popK, ry = H * .3 * eyeK * popK * lerp(.8, 1, sx), ey = q.y, ex = clamp(q.x, -R * .95 + rx, R * .95 - rx), ctx = ink.ctx;
+    if (facing < .06) return;
+    const sx = clamp(facing, .24, 1), popK = eyePop(sx), rx = R * .25 * eyeK * sx * popK, ry = H * .3 * eyeK * popK * lerp(.8, 1, sx), ey = q.y, ex = clamp(q.x, -R * .95 + rx, R * .95 - rx), ctx = ink.ctx;
     let open = blink ? 0 : lid * (1 - blinkAmt); const arc = expr.arc;
     if (open < .06) {
       const dir = arc === 'up' ? -1 : arc === 'pinch' ? 0 : 1;
@@ -358,7 +360,7 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
     }
     if (expr.tears) { const w = rx * .3, L = ry * 2.05, y0 = ey + ry * .15, wob = sin(t * 9 + s) * 1.2; ink.shape([[ex - w * .7, y0], [ex + w * .7, y0], [ex + w + wob, y0 + L * .6], [ex + w * .7, y0 + L * .95], [ex, y0 + L * 1.1], [ex - w * .7, y0 + L * .95], [ex - w + wob, y0 + L * .6]], { fill: '#7cd0f2', lw: 2 }); }
     // brow, tilt in = angry
-    const bw = R * .25 * (f.browW ?? 1) * sx, by = ey - ry * 1.14 - browP[0] * H * .15, ang = browP[1] * .36;
+    const bw = R * .25 * (f.browW ?? 1) * sx * lerp(.55, 1, sx), by = ey - ry * 1.14 - browP[0] * H * .15, ang = browP[1] * .36;
     const lim = R * .94, inner = [clamp(ex - s * bw * .95, -lim, lim), by + ang * bw], outer = [clamp(ex + s * bw * .95, -lim, lim), by - ang * bw * .75];
     ink.blob([{ pts: ink.boil([inner, [ex, by - 1.5 + (ang * bw * .1)], outer], false, seedH + s), r: [R * .062 * (f.browW ?? 1), R * .058 * (f.browW ?? 1), R * .034 * (f.browW ?? 1)] }], spec.hair.style === 'bald' || spec.hair.style === 'hijab' ? '#3a2a2a' : (spec.hair.color === '#e9e6ea' ? '#b7b4bd' : spec.hair.color), { lw: 0 });
   };
@@ -371,7 +373,8 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
     const towardFace = [-sy * .85, -cy * .75], fl = hypot(towardFace[0], towardFace[1]) || 1; C.fillStyle = skin; C.beginPath(); C.arc(nq.x + towardFace[0] / fl * baseR * .82, nq.y + towardFace[1] / fl * baseR * .82, baseR * 1.06, 0, TAU); C.fill();
     };
   if (!wearsLens) drawNose();
-  if (face) { eye(-1, expr.lidR, expr.browR); eye(1, expr.lidL, expr.browL); }
+  // eyes stay inside the head, however wide they pop
+  if (face) { C.save(); C.clip(hp); eye(-1, expr.lidR, expr.browR); eye(1, expr.lidL, expr.browL); C.restore(); }
   if (face && cy > .0) {
     // mouth
     const m = { ...expr.mouth }; const talk = pose.talk ?? 0; if (talk > 0) { m.o = max(m.o, talk * .9); m.w = lerp(m.w, max(.48, m.w * .85), talk); }
@@ -398,7 +401,7 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
       if (pts.length > 1) ink.blob([{ pts, r }], fcol, { lw: big ? 3 : 2.2 });
       if (!big) { const low = -.88 - min(1, max(m.o, talk * .9)) * .12, q = P(0, low), e = P(0, low - .2); if (q.z > -R * .1) ink.blob([{ pts: [[q.x, q.y], [e.x, e.y]], r: [R * .11, R * .055] }], fcol, { lw: 2.6 }); }
     }
-    if (spec.acc.includes('bindi')) { const q = P(0, .3); ink.ell(q.x, q.y, R * .05, R * .06, { fill: '#c9213f', stroke: false }); }
+    if (spec.acc.includes('bindi')) { const q = P(0, eyeLat + .1); ink.ell(q.x, q.y, R * .05, R * .06, { fill: '#c9213f', stroke: false }); }
   }
   if (spec.acc.includes('glasses') || spec.acc.includes('shades')) { C.save(); C.clip(hp); // lenses stay on the face
     const dark = spec.acc.includes('shades'), Ps = [-1, 1].map(s => [s, P(s * eyeGap, eyeLat), cos(s * eyeGap + hy)]);
@@ -449,7 +452,7 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
       if (top.puff) { const P = sl.pts, n = P.length; for (const f of [.3, .62]) { const i = Math.floor(n * f), q = P[i], w = P[Math.min(n - 1, i + 1)], dx = w[0] - q[0], dy = w[1] - q[1], l = hypot(dx, dy) || 1, r = sl.r[i]; ink.line([[q[0] - dy / l * r, q[1] + dx / l * r], [q[0] + dx / l * 3, q[1] + dy / l * 3], [q[0] + dy / l * r, q[1] - dx / l * r]], { lw: 3, color: darken(col, .34) }); } }
     }
     if (shape === 'none') { const n = tb.pts.length, from = Math.floor(n * .84), cf = { pts: tb.pts.slice(from), r: tb.r.slice(from).map(r => r * 1.3) }; if (cf.pts.length > 1) limbBand(ink, cf, top.skirt || spec.top.type === 'dress' ? col : spec.bottom.color); } // the wrist disappears into the pocket
-    if (shape !== 'none' && spec.acc.includes('watch') && s > 0) { const w = cut(tb, top.sleeve >= 1 ? 1 : .93); ink.blob([{ pts: w.pts.slice(-2), r: w.r.slice(-2).map(r => r * 1.14) }], spec.top.accent, { lw: 3 }); }
+    if (shape !== 'none' && spec.acc.includes('watch') && s > 0 && top.sleeve < .9) { const n = tb.pts.length, i0 = Math.floor(n * .9), band = { pts: tb.pts.slice(i0, Math.min(n, i0 + 2)), r: tb.r.slice(i0, Math.min(n, i0 + 2)).map(r => r * 1.05) }; if (band.pts.length > 1) limbBand(ink, band, spec.top.accent); } // a thin strap on a bare wrist; a full sleeve hides it
     if (hold && hold[s > 0 ? 'l' : 'r']) hold[s > 0 ? 'l' : 'r'](ink, h, eH, 'front');
   };
   const leg = (F, s) => {
@@ -465,7 +468,7 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
       if (chappal) { ink.blob(ankleItems(P, spec, true), spec.skin, { shade: shadeOf(spec.skin) }); drawToes(ink, spec, F); drawSlipperStrap(ink, spec, F); } else if (!tucked) drawShoe(ink, spec, F);
       if (B.type === 'dhoti') ink.blob([calf], spec.skin, { shade: shadeOf(spec.skin) });
       if (spec.top.type !== 'dress' && B.type !== 'skirt' && !(TOP[spec.top.type]?.skirt > .9)) {
-        const ty = B.type, fit = ty === 'dhoti' ? u => 1.55 + .7 * u ** .8 : ty === 'wide' ? u => 1.1 + 1.05 * u ** 1.5 : ty === 'joggers' ? u => 1.12 - .14 * u : ty === 'cargo' ? u => 1.12 + .22 * u ** 2 : u => 1.04 + .2 * u ** 3, fl = tb.r.map((r, i, all) => r * fit(i / (all.length - 1))), end = cut({ pts: tb.pts, r: fl }, tucked ? .8 : ty === 'joggers' ? .96 : ty === 'dhoti' ? .9 : .985), T = boilTube(ink, end, seed + s * 13), cc = B.color, dk = darken(cc, .42);
+        const ty = B.type, fit = ty === 'dhoti' ? u => 1.55 + .7 * u ** .8 : ty === 'wide' ? u => 1.1 + 1.05 * u ** 1.5 : ty === 'joggers' ? u => 1.12 - .14 * u : ty === 'cargo' ? u => 1.14 + .06 * u : u => 1.04 + .2 * u ** 3, fl = tb.r.map((r, i, all) => r * fit(i / (all.length - 1))), end = cut({ pts: tb.pts, r: fl }, tucked ? .8 : ty === 'joggers' ? .96 : ty === 'dhoti' ? .9 : .985), T = boilTube(ink, end, seed + s * 13), cc = B.color, dk = darken(cc, .42);
         hemTube(ink, T, cc);
         jointFolds(ink, h, k, a, b.legR * .9, dk);
         const n = T.pts.length, at0 = f => { const i = Math.min(n - 1, Math.floor(n * f)), q = T.pts[i], w = T.pts[Math.min(n - 1, i + 1)], dx = w[0] - q[0], dy = w[1] - q[1], l = hypot(dx, dy) || 1; return { q, ux: dx / l, uy: dy / l, nx: -dy / l, ny: dx / l, r: T.r[i] }; };
@@ -473,7 +476,7 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
         if (ty === 'jeans' && B.roll !== false && !tucked) { const from = Math.floor(n * .88), cf = { pts: T.pts.slice(from), r: T.r.slice(from).map(r => r * 1.2) }; if (cf.pts.length > 1) limbBand(ink, cf, lighten(cc, .28)); }
         if (ty === 'jeans') { const P0 = T.pts.filter((_, i) => i % 3 === 0).map((q, i2) => { const g = at0(i2 * 3 / n); return [q[0] + g.nx * s * g.r * .55, q[1] + g.ny * s * g.r * .55]; }); ink.line(P0, { lw: 2, color: lighten(cc, .3), even: 1 }); const g = at0(.86); ink.line([[g.q[0] - g.nx * g.r * .8, g.q[1] - g.ny * g.r * .8], [g.q[0] + g.nx * g.r * .8, g.q[1] + g.ny * g.r * .8]], { lw: 2.4, color: dk, hard: true }); }
         if (ty === 'joggers') { const g = at0(.87); ink.line([[g.q[0] - g.nx * g.r, g.q[1] - g.ny * g.r], [g.q[0] + g.nx * g.r, g.q[1] + g.ny * g.r]], { lw: 3, hard: true }); }
-        if (ty === 'cargo') { const g = at0(.42), w = g.r * .72, hh = g.r * .8, o = s * g.r * .46, cx = g.q[0] + g.nx * o, cy0 = g.q[1] + g.ny * o, Pp = (u, v) => [cx + g.nx * u + g.ux * v, cy0 + g.ny * u + g.uy * v]; ink.shape([Pp(-w, -hh), Pp(w, -hh), Pp(w, hh), Pp(-w, hh)], { fill: lighten(cc, .08), lw: 2.8, hard: true }); ink.shape([Pp(-w * 1.06, -hh), Pp(w * 1.06, -hh), Pp(w * 1.06, -hh * .28), Pp(-w * 1.06, -hh * .28)], { fill: lighten(cc, .16), lw: 2.6, hard: true }); }
+        if (ty === 'cargo') { const th = [lerp(h[0], k[0], .62), lerp(h[1], k[1], .62)], ci = T.pts.reduce((bi, q, i) => (hypot(q[0] - th[0], q[1] - th[1]) < hypot(T.pts[bi][0] - th[0], T.pts[bi][1] - th[1]) ? i : bi), 0), g = at0(ci / n), w = g.r * .72, hh = g.r * .8, o = s * g.r * .46, cx = g.q[0] + g.nx * o, cy0 = g.q[1] + g.ny * o, Pp = (u, v) => [cx + g.nx * u + g.ux * v, cy0 + g.ny * u + g.uy * v]; ink.shape([Pp(-w, -hh), Pp(w, -hh), Pp(w, hh), Pp(-w, hh)], { fill: lighten(cc, .08), lw: 2.8, hard: true }); ink.shape([Pp(-w * 1.06, -hh), Pp(w * 1.06, -hh), Pp(w * 1.06, -hh * .28), Pp(-w * 1.06, -hh * .28)], { fill: lighten(cc, .16), lw: 2.6, hard: true }); }
       }
       if (tucked) drawShoe(ink, spec, F); // the boot goes over the trouser leg
     }
@@ -519,7 +522,7 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
   const path = ink.shape(tp, { fill: col, shade: shadeOf(col), shadeBy: 13, seed: seed + 23 });
   if (spec.top.type === 'stripes') stripesOn(ink, path, rg, col, spec.top.accent);
   if (top.band) { if (top.short) rg.hip = { c: [lerp(rg.hem.c[0], rg.waist.c[0], 1), lerp(rg.hem.c[1], rg.waist.c[1], 1)], w: rg.waist.w }; hemBand(ink, rg, path, top.band === 2 ? spec.top.accent : darken(col, .12), top.short ? .2 : .34); }
-  detailsFront(ink, spec, sk, rg, col, path); detailsBack(ink, spec, sk, rg, col, path);
+  detailsFront(ink, spec, sk, rg, col, path); detailsBack(ink, spec, sk, rg, col, path); hemSlits(ink, spec, rg, col, path);
   if (tuck) { const bc = spec.bottom.belt ?? '#2c2c3a', h0 = rg.tuckHem, m = { c: [lerp(h0.c[0], rg.hip.c[0], .3), lerp(h0.c[1], rg.hip.c[1], .3)], w: lerp(h0.w, rg.hip.w, .3) }, q = torsoPoly([m, h0]); ink.shape(q, { fill: bc, lw: 3.2, hard: true }); if (cos(sk.hipYaw) > .3) { const yw = sin(sk.hipYaw) * rg.hip.w * .9, bx = (m.c[0] + h0.c[0]) / 2 + yw, by = (m.c[1] + h0.c[1]) / 2; ink.shape([[bx - 9, by - 7], [bx + 9, by - 7], [bx + 9, by + 7], [bx - 9, by + 7]], { fill: '#d9b24a', lw: 2.4, hard: true }); } }
   if (spec.acc.includes('scarf')) { const a = pr(sk.neckBase); ink.blob([{ pts: [[a[0] - nr * 1.3, a[1] - 2], [a[0], a[1] + 5], [a[0] + nr * 1.3, a[1] - 2]], r: nr * .6 }], spec.top.accent, { shade: shadeOf(spec.top.accent) }); }
   // arms in front merge at the shoulder with a fill-only patch

@@ -44,7 +44,7 @@ export function bookProp(ink, sk, spec) {
   if (Math.abs(c0) > .35) { thumb(cx - w, L0[1] - r * .7, -1); thumb(cx + w, R0[1] - r * .7, 1); } else { const near = (Math.sin(sk.chestYaw) >= 0 ? sk.R.h : sk.L.h), n = pr(near); thumb(cx - w, n[1] - r * .7, -1); }
 }
 export function boxProp(ink, sk, spec) {
-  const a = pr(sk.L.h), b = pr(sk.R.h), cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2 - 14, w = Math.max(68, Math.abs(a[0] - b[0]) * .62), hh = 54, col = '#c7a77a';
+  const a = pr(sk.L.h), b = pr(sk.R.h), cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2 - 14, w = Math.max(44, Math.abs(a[0] - b[0]) / 2 + spec.body.handR * .25), hh = 54, col = '#c7a77a';
   ink.shape([[cx - w, cy - hh], [cx + w, cy - hh], [cx + w, cy + hh], [cx - w, cy + hh]], { fill: col, shade: darken(col, .24), shadeBy: 9, lw: 5, hard: true });
   ink.shape([[cx - 12, cy - hh], [cx + 12, cy - hh], [cx + 12, cy + hh * .1], [cx - 12, cy + hh * .1]], { fill: lighten(col, .3), stroke: false, hard: true });
 }
