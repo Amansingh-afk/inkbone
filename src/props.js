@@ -1,6 +1,7 @@
 // Held props follow the hand. Free props stand on the floor at (x, y). Everything is flat vector with one ink line.
 import { darken, lighten, ellipse, mix, clamp } from './core.js';
 import { project as pr, add } from './rig.js';
+import { hand } from './paint.js';
 const { hypot, atan2, cos, sin } = Math;
 export const TIP = 2.1; // the torch's tip, as a multiple of the distance between the hands
 export function drawProp(ink, name, h, e, layer, spec, sk, side = -1) {
@@ -43,10 +44,13 @@ export function bookProp(ink, sk, spec) {
   const thumb = (x, y, dir) => ink.blob([{ pts: [[x + dir * 4 * k, y], [x - dir * r * .5, y - r * .05], [x - dir * r * 1.02, y - r * .16]], r: [r * .3, r * .28, r * .22] }], spec.skin, { lw: 3.4 });
   if (Math.abs(c0) > .35) { thumb(cx - w, L0[1] - r * .7, -1); thumb(cx + w, R0[1] - r * .7, 1); } else { const near = (Math.sin(sk.chestYaw) >= 0 ? sk.R.h : sk.L.h), n = pr(near); thumb(cx - w, n[1] - r * .7, -1); }
 }
+// The box goes over the body and arms, then each hand is drawn again on top at its side, fingers turned in, so it reads as gripping the box.
 export function boxProp(ink, sk, spec) {
-  const a = pr(sk.L.h), b = pr(sk.R.h), cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2 - 14, w = Math.max(44, Math.abs(a[0] - b[0]) / 2 + spec.body.handR * .25), hh = 54, col = '#c7a77a';
+  const a = pr(sk.L.h), b = pr(sk.R.h), cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2 - 14, w = Math.max(44, Math.abs(a[0] - b[0]) / 2 - spec.body.handR * .2), hh = 54, col = '#c7a77a';
   ink.shape([[cx - w, cy - hh], [cx + w, cy - hh], [cx + w, cy + hh], [cx - w, cy + hh]], { fill: col, shade: darken(col, .24), shadeBy: 9, lw: 5, hard: true });
   ink.shape([[cx - 12, cy - hh], [cx + 12, cy - hh], [cx + 12, cy + hh * .1], [cx - 12, cy + hh * .1]], { fill: lighten(col, .3), stroke: false, hard: true });
+  const stick = spec.style === 'stick', r = spec.body.handR * (stick ? .86 : 1);
+  for (const q of [a, b]) { const s = Math.sign(cx - q[0]) || 1, edge = [cx - s * w, Math.min(cy + hh * .55, Math.max(cy - hh * .55, q[1]))]; hand(ink, [edge[0] - s * r * .55, edge[1]], [s * .96, .28], 'flat', spec.skin, s, r, stick ? 2.4 : spec.body.armR * .58); }
 }
 const box = (ink, x, y, w, h, fill, o = {}) => ink.shape([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], { fill, hard: true, ...o });
 export const FREE_PROPS = {

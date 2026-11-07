@@ -43,7 +43,7 @@ export const stopTime = m => (m.hits ?? []).reduce((a, h) => a + (h.stop ?? 0), 
 
 export function poseAt(move, tIn, { facing = .55, overlap = true, twos = true } = {}) {
   const loop = !!move.loop, T = loop ? tIn : Math.min(tIn, move.dur + stopTime(move)), s0 = stopped(move, T);
-  const step = t => (twos ? Math.floor(t * 12 + 1e-6) / 12 : t), s = step(s0), norm = v => (loop && !move.cycle ? ((v % move.dur) + move.dur) % move.dur : Math.max(0, v));
+  const step = t => (twos ? Math.floor(t * 12 + 1e-6) / 12 : t), s = step(s0), norm = v => (loop ? ((v % move.dur) + move.dur) % move.dur : Math.max(0, v)); // loops wrap, so the head and hand lag carry across the seam instead of snapping on frame 0
   const inHit = (move.hits ?? []).some(h => T >= h.t && T < h.t + (h.stop ?? 0) + 1 / 24), S1 = inHit ? s0 : s; // a freeze holds the contact pose exactly, with no stepping or lag
   const base = { ...sample(move, norm(S1)) };
   if (overlap && !inHit) { // the head and hands arrive a frame or two after the body
@@ -97,7 +97,7 @@ export function drawAct(ink, spec, name, t, { x = 0, y = 0, scale = 1, facing = 
   const hold = {}; if (move.props?.r) hold[isFlipped(move, facing) ? 'l' : 'r'] = (i, h, e, layer) => drawProp(i, move.props.r, h, e, layer, spec, sk, isFlipped(move, facing) ? 1 : -1);
   if (move.props?.l) hold[isFlipped(move, facing) ? 'r' : 'l'] = (i, h, e, layer) => drawProp(i, move.props.l, h, e, layer, spec, sk, isFlipped(move, facing) ? -1 : 1);
   if (move.props?.book) hold.front = i => bookProp(i, sk, spec);
-  if (move.props?.box) hold.r = (i, h, e, layer) => { if (layer === 'behind') boxProp(i, sk, spec); };
+  if (move.props?.box) hold.front = i => boxProp(i, sk, spec);
   paintSpec(ink, spec, sk, { t: clock, swing, hold, arms });
   // effects anchored to the body, on top
   if (cues) for (const c of move.cues ?? []) {

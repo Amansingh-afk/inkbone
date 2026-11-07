@@ -294,6 +294,8 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
   if (pose.headSq) ink.ctx.scale(1 + pose.headSq, 1 - pose.headSq);
   const skShade = shadeOf(skin), seedH = strSeed(spec.seed + 'head'), C0 = () => ink.ctx;
   const outline = headOutline(R, H, f.jaw, hy, pitch, spec.seed);
+  // How far the head reaches left and right at a given height, from its real outline: a narrow-topped head keeps its eyes and lenses further in than a fixed share of the radius would.
+  const reach = y => { const xs = []; for (let i = 0; i < outline.length; i++) { const a = outline[i], b = outline[(i + 1) % outline.length]; if ((a[1] - y) * (b[1] - y) > 0 || a[1] === b[1]) continue; xs.push(a[0] + (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1])); } return xs.length < 2 ? [-R * .95, R * .95] : [Math.max(Math.min(...xs), -R * .95), Math.min(Math.max(...xs), R * .95)]; };
   // ears behind the face line
   const ear = (s, front) => {
     const q = P(s * PI / 2 * .98, -.05, 1); const vis = cos(s * PI / 2 + hy);
@@ -341,7 +343,7 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
   const eye = (s, lid, browP) => {
     const lon = s * eyeGap, q = P(lon, eyeLat), facing = cos(lon + hy);
     if (facing < .06) return;
-    const sx = clamp(facing, .24, 1), popK = eyePop(sx), rx = R * .25 * eyeK * sx * popK, ry = H * .3 * eyeK * popK * lerp(.8, 1, sx), ey = q.y, ex = clamp(q.x, -R * .95 + rx, R * .95 - rx), ctx = ink.ctx;
+    const sx = clamp(facing, .24, 1), popK = eyePop(sx), rx = R * .25 * eyeK * sx * popK, ry = H * .3 * eyeK * popK * lerp(.8, 1, sx), ey = q.y, ex = clamp(q.x, reach(q.y)[0] * .9 + rx, reach(q.y)[1] * .9 - rx), ctx = ink.ctx;
     let open = blink ? 0 : lid * (1 - blinkAmt); const arc = expr.arc;
     if (open < .06) {
       const dir = arc === 'up' ? -1 : arc === 'pinch' ? 0 : 1;
@@ -383,6 +385,7 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
     };
   if (!wearsLens) drawNose();
   // eyes stay inside the head, however wide they pop
+  if (face && !faceOnly) { if (spec.acc.includes('bindi')) { const q = P(0, eyeLat + .1); ink.ell(q.x, q.y, R * .05, R * .06, { fill: '#c9213f', stroke: false }); } } // under the eyes, so a turned-in far eye covers it instead of wearing it
   if (face) { C.save(); C.clip(hp); eye(-1, expr.lidR, expr.browR); eye(1, expr.lidL, expr.browL); C.restore(); }
   if (face && cy > .0) {
     // mouth
@@ -410,16 +413,15 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
       if (pts.length > 1) ink.blob([{ pts, r }], fcol, { lw: big ? 3 : 2.2 });
       if (!big) { const low = -.88 - min(1, max(m.o, talk * .9)) * .12, q = P(0, low), e = P(0, low - .2); if (q.z > -R * .1) ink.blob([{ pts: [[q.x, q.y], [e.x, e.y]], r: [R * .11, R * .055] }], fcol, { lw: 2.6 }); }
     }
-    if (spec.acc.includes('bindi')) { const q = P(0, eyeLat + .1); ink.ell(q.x, q.y, R * .05, R * .06, { fill: '#c9213f', stroke: false }); }
   }
   if (spec.acc.includes('glasses') || spec.acc.includes('shades')) { C.save(); C.clip(hp); // lenses stay on the face
     const dark = spec.acc.includes('shades'), Ps = [-1, 1].map(s => [s, P(s * eyeGap, eyeLat), cos(s * eyeGap + hy)]);
     let prev = null;
     const eyeK2 = EYE_SIZE[f.eyes] ?? 1, bridge = [];
     for (const [s, q, fac] of Ps) {
-      if (fac < .32) continue; const sx = clamp(fac, .32, 1), pk = eyePop(sx), rx = (R * .25 * eyeK2 * pk + R * .05) * sx * lerp(.75, 1, sx), ry = H * .3 * eyeK2 * pk * lerp(.8, 1, sx) + H * .045, eyeW = R * .25 * eyeK2 * sx * pk, gx = clamp(q.x, -R * .95 + eyeW, R * .95 - eyeW);
+      if (fac < .4) continue; const sx = clamp(fac, .4, 1), pk = eyePop(sx), rx = (R * .25 * eyeK2 * pk + R * .05) * sx * lerp(.75, 1, sx), ry = H * .3 * eyeK2 * pk * lerp(.8, 1, sx) + H * .045, eyeW = R * .25 * eyeK2 * sx * pk, gx = clamp(q.x, reach(q.y)[0] * .9 + eyeW, reach(q.y)[1] * .9 - eyeW);
       if (dark) ink.ell(gx, q.y, rx, ry, { fill: '#22202e', lw: 4 });
-      else { C.save(); C.globalAlpha = .2; C.fillStyle = '#cfeaf5'; C.beginPath(); C.ellipse(gx, q.y, rx, ry, 0, 0, TAU); C.fill(); C.restore(); ink.stroke(ink.path(ellipse(gx, q.y, rx, ry, 26)), 3.6); }
+      else ink.stroke(ink.path(ellipse(gx, q.y, rx, ry, 26)), 3.6); // clear glass: no tint, which turned a lowered eyelid into a murky grey disc
       C.strokeStyle = dark ? '#6a6882' : 'rgba(255,255,255,.85)'; C.lineWidth = 2.6 / ink.sc; C.beginPath(); C.moveTo(gx - rx * .55, q.y - ry * .1); C.lineTo(gx - rx * .15, q.y - ry * .62); C.stroke();
       const ear = P(s * PI / 2 * .98, -.02); if (ear.z > -R * .25 && abs(sy) > .35) { const dir = Math.sign(ear.x - gx) || 1; ink.line([[gx + dir * rx, q.y - ry * .15], [ear.x, ear.y - R * .05]], { lw: 3.2, even: 1 }); }
       bridge.push([gx, q.y, rx, ry]);
@@ -542,9 +544,12 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
   putArm(armL, 1, fL && !oL, true); putArm(armR, -1, fR && !oR, true);
   drawHijabDrape(ink, spec, sk);
   putArm(armL, 1, fL && !oL, false); putArm(armR, -1, fR && !oR, false);
+  // an arm drawn over everything only goes over the head when its hand is up at the head; otherwise it would cover the face on short-necked bodies
+  const atHead = A => pr(A.h)[1] < pr(sk.head)[1] + b.headH * .9;
+  if (oL && !atHead(armL)) arm(armL, 1); if (oR && !atHead(armR)) arm(armR, -1);
   hold?.front?.(ink);
   heads();
-  if (oL) arm(armL, 1); if (oR) arm(armR, -1);
+  if (oL && atHead(armL)) arm(armL, 1); if (oR && atHead(armR)) arm(armR, -1);
   ink.ctx.restore();
 }
 
