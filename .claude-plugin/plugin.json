@@ -1,5 +1,5 @@
 {
   "name": "inkbone",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Flat vector cartoon animation: write a film as JSON, render stills, sheets and video with the inkbone CLI."
 }

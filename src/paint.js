@@ -331,7 +331,7 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
   // blush
   if (expr.blush) { C.save(); C.clip(hp); C.fillStyle = mix(skin, '#f0576a', .5); C.globalAlpha = .8 * expr.blush; for (const s of [1, -1]) { const q = P(s * .75, -.32); if (q.z > 0) { C.beginPath(); C.ellipse(q.x, q.y, R * .2 * clamp(q.z / R + .3), R * .1, 0, 0, TAU); C.fill(); } } C.restore(); }
   // facial hair lives on the skin, clipped to the head
-  const fc = f.facial, fcol = f.facialColor;
+  const fc = spec.head ? 'none' : f.facial, fcol = f.facialColor; // an animal head has its own muzzle: no beard or moustache on it
   if ((fc === 'beard' || fc === 'stubble' || fc === 'longbeard') && cyS > -.1) {
     // Follows the jaw: sideburn at the ear, down the cheek, over the lip. It stops at the ears, so the back of the head stays clear.
     // A big cartoon head keeps more of its face clear: the beard's top edge drops as the head grows past average.
@@ -478,13 +478,16 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
     if (A.aimW > 0) { const q = [A.aim[0], -A.aim[1] + A.aim[2] * .1], ql = hypot(q[0], q[1]) || 1; fd = [lerp(fd[0], q[0] / ql, A.aimW), lerp(fd[1], q[1] / ql, A.aimW)]; fl = hypot(fd[0], fd[1]) || 1; fd = [fd[0] / fl, fd[1] / fl]; }
     const px = -fd[1], py = fd[0], chestX = pr(sk.chest)[0], inward = abs(cos(sk.chestYaw)) > .4 ? Math.sign(chestX - h[0]) || 1 : (sin(sk.chestYaw) >= 0 ? 1 : -1), thumbSide = px * inward * abs(fd[1]) - py * abs(fd[0]) >= 0 ? 1 : -1;
     const eH = [h[0] - fd[0] * 30, h[1] - fd[1] * 30]; if (hold && hold[s > 0 ? 'l' : 'r']) hold[s > 0 ? 'l' : 'r'](ink, h, eH, 'behind');
-    hand(ink, h, fd, shape, spec.skin, thumbSide, b.handR, tb.r[tb.r.length - 1], top.sleeve >= 1 ? -.7 : -.02);
+    // a hand reaching toward the camera is in front of its own sleeve, so it goes on top of it; otherwise the sleeve laps over the wrist
+    const handOver = A.h[2] - A.e[2] > b.armR * .8, drawHand = () => hand(ink, h, fd, shape, spec.skin, thumbSide, b.handR, tb.r[tb.r.length - 1], top.sleeve >= 1 && !handOver ? -.7 : -.02);
+    if (!handOver) drawHand();
     if (top.sleeve > 0) {
       const sl = cut(tb, min(.97, top.sleeve)), puffK = top.puff ? 1.42 : 1.12; sl.r = sl.r.map(r => r * puffK); hemTube(ink, boilTube(ink, sl, seed + s * 7), col);
       if (top.cuff) { const whole = sl.pts.length, from = cut(tb, min(.97, top.sleeve) * .87).pts.length - 1, cf = { pts: sl.pts.slice(from), r: sl.r.slice(from).map(r => r * 1.02) }; if (cf.pts.length > 1) limbBand(ink, cf, spec.top.type === 'blazer' ? (spec.top.shirt ?? spec.top.accent) : top.cuff === 2 ? spec.top.accent : lighten(col, .08)); }
       if (spec.top.type === 'wraps') wrapLines(ink, sl, darken(col, .42)); else if (top.sleeve > .6) jointFolds(ink, a, e, h, b.armR * puffK, darken(col, .42));
       if (top.puff) { const P = sl.pts, n = P.length; for (const f of [.3, .62]) { const i = Math.floor(n * f), q = P[i], w = P[Math.min(n - 1, i + 1)], dx = w[0] - q[0], dy = w[1] - q[1], l = hypot(dx, dy) || 1, r = sl.r[i]; ink.line([[q[0] - dy / l * r, q[1] + dx / l * r], [q[0] + dx / l * 3, q[1] + dy / l * 3], [q[0] + dy / l * r, q[1] - dx / l * r]], { lw: 3, color: darken(col, .34) }); } }
     }
+    if (handOver) drawHand();
     if (shape === 'none') { const n = tb.pts.length, from = Math.floor(n * .84), cf = { pts: tb.pts.slice(from), r: tb.r.slice(from).map(r => r * 1.3) }; if (cf.pts.length > 1) limbBand(ink, cf, top.skirt || spec.top.type === 'dress' ? col : spec.bottom.color); } // the wrist disappears into the pocket
     if (shape !== 'none' && spec.acc.includes('watch') && s > 0 && top.sleeve < .9) { const n = tb.pts.length, i0 = Math.floor(n * .9), band = { pts: tb.pts.slice(i0, Math.min(n, i0 + 2)), r: tb.r.slice(i0, Math.min(n, i0 + 2)).map(r => r * 1.05) }; if (band.pts.length > 1) limbBand(ink, band, spec.top.accent); } // a thin strap on a bare wrist; a full sleeve hides it
     if (hold && hold[s > 0 ? 'l' : 'r']) hold[s > 0 ? 'l' : 'r'](ink, h, eH, 'front');

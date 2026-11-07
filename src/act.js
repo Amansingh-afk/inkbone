@@ -3,7 +3,7 @@ import { EASE, clamp, lerp, hash, mix } from './core.js';
 import { REST, solve, project as pr, rotY } from './rig.js';
 import { paintSpec } from './styles/index.js';
 import { MOVES } from './moves/index.js';
-import { drawProp, boxProp, bookProp, TIP } from './props.js';
+import { drawProp, boxProp, bookProp, clipboardProp, TIP } from './props.js';
 import { FX } from './fx/index.js';
 // A scene's light on a character: every colour leans toward the light's colour. Eye whites and the ink line stay put, so faces still read in the dark.
 const graded = new WeakMap();
@@ -98,6 +98,7 @@ export function drawAct(ink, spec, name, t, { x = 0, y = 0, scale = 1, facing = 
   if (move.props?.l) hold[isFlipped(move, facing) ? 'r' : 'l'] = (i, h, e, layer) => drawProp(i, move.props.l, h, e, layer, spec, sk, isFlipped(move, facing) ? -1 : 1);
   if (move.props?.book) hold.front = i => bookProp(i, sk, spec);
   if (move.props?.box) hold.front = i => boxProp(i, sk, spec);
+  if (move.props?.board) hold.front = i => clipboardProp(i, sk, spec, isFlipped(move, facing));
   paintSpec(ink, spec, sk, { t: clock, swing, hold, arms });
   // effects anchored to the body, on top
   if (cues) for (const c of move.cues ?? []) {

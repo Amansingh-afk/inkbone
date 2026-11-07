@@ -75,7 +75,7 @@ Positions are metres on the ground: `[x, z]`, x to the right, z toward the camer
 | `time` | `day`, `sunset`, `night`, or a time-lapse `{ "seq": ["day", "night"], "dur": 9 }` |
 | `seed`, `dur` | as in 2D |
 | `cam` | shots: `[{ "at", "dur", "move", ...move options }]`. Moves: `hold` (`pos`, `target`), `push-in` / `pull-out` (`target`, `dist`, `height`, `amount`), `orbit` (`target`, `dist`, `from`, `to`, `height`), `crane-up`, `follow` (`target`: an actor id), `whip`, `fly-through` (`path`, `look`). `punch: true` holds dead still. |
-| `actors` | each needs `pos: [x, z]`. Track segments use `to: [x, z]`, `face` (a world angle, or a point `[x, z]` to look at), `sit`, `ride`, `climb`, `reach`. |
+| `actors` | each needs `pos: [x, z]`. Track segments use `to: [x, z]`, `face` (a world angle, or a point `[x, z]` to look at), `sit`, `ride`, `reach`. |
 | `crowd` | `{ "n", "area": [x0, z0, x1, z1], "seed", "move", "style" }` |
 | `vehicles` | `[{ "id", "kind": "auto" / "scooter" / "jeep" / "truck" / "jcb", "pos", "track" }]` |
 | `talkers` | talking objects: `[{ "on": "fridge", "say": [{ "at", "dur", "expr" }] }]` |

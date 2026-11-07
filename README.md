@@ -16,7 +16,7 @@ node bin/inkbone.mjs look zeus                        # a character at six angle
 node bin/inkbone.mjs list dog                         # search every name
 ```
 
-From another project: `npm install git+file:///path/to/inkbone#v0.3.0`, then `npx inkbone ...`. See [install](skills/inkbone/reference/install.md).
+From another project: `npm install git+file:///path/to/inkbone#v0.3.1`, then `npx inkbone ...`. See [install](skills/inkbone/reference/install.md).
 
 ## Run it
 
@@ -80,7 +80,7 @@ stage.draw(ctx, { world: 'chai-stall', time: 'sunset', dur: 6, cam: [{ at: 0, du
 - **Worlds:** `flat`, `office`, `police-station`, `village`, `canal`, `market`, `chai-stall`. Times: `day`, `sunset`, `night`, or a time-lapse `{ seq: ['day', 'night'], dur: 9 }`.
 - **Camera moves:** `hold`, `push-in`, `pull-out`, `orbit`, `crane-up`, `follow`, `whip`, `fly-through`. Shots can start on a voice line, and `punch: true` holds dead still.
 - **Touching each other:** `{ at, duet: 'handshake', with: 'theirId' }` on one actor's track, in 2D or 3D. Duets: `handshake`, `hug`, `slap`, `shove`, `give-take`, `shoulder-pat`, `grab-collar`, `pull-along`. Hands are solved every frame, so they meet on any two bodies. Stand the pair `duetGap(name, a, b)` apart first (times scale). Check with `node tools/duets.mjs out.png`.
-- **Touching the world:** `reach: { r: 'post' }`, `sit: 'bench'`, `ride: 'scooter1'`, `climb: { from, to }`, plus held props.
+- **Touching the world:** `reach: { r: 'post' }`, `sit: 'bench'`, `ride: 'scooter1'`, plus held props.
 - **Vehicles:** `auto`, `scooter`, `jeep`, `truck`, `jcb`. **Crowds:** `crowd: { n, area }`. **Talking objects:** `talkers: [{ on: 'fridge', say: [...] }]`.
 - **Flat scenes in 3D:** `toWorldScene(scene, 'flat')` converts a flat scene's positions to a world.
 - **Rules:** frames repeat exactly for the same time and seed, the core has no image assets, and film-specific content stays in the film's folder.
