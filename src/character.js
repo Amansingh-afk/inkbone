@@ -1,5 +1,6 @@
 // Characters are data: a seed picks a body, face, hair, outfit and colours. Any field can be overridden.
 import { Rng } from './core.js';
+export const DHOTI = '#f2ece0';
 export const BODIES = {
   average: { stature: 1, torso: 1, leg: 1, arm: 1, shoulder: 1, hip: 1, belly: 0, limb: 1, head: 1 },
   slim:    { stature: 1.02, torso: 1, leg: 1.06, arm: 1.03, shoulder: .84, hip: .84, belly: 0, limb: .78, head: .96 },
@@ -10,6 +11,8 @@ export const BODIES = {
   lanky:   { stature: 1.22, torso: 1.1, leg: 1.3, arm: 1.26, shoulder: .8, hip: .76, belly: 0, limb: .7, head: .86 },
   barrel:  { stature: .98, torso: 1.12, leg: .8, arm: .96, shoulder: 1.26, hip: 1.1, belly: 1.3, limb: 1.26, head: .9 },
   stocky:  { stature: .86, torso: .92, leg: .74, arm: .86, shoulder: 1.22, hip: 1.14, belly: .3, limb: 1.3, head: 1.04 },
+  // asked for by name only, never picked at random, so existing seeds keep their bodies
+  stubby:  { stature: .8, torso: .88, leg: .56, arm: .8, shoulder: .96, hip: 1, belly: .1, limb: 1.04, head: 1.2, manual: 1 },
   pear:    { stature: .96, torso: .96, leg: .9, arm: .92, shoulder: .9, hip: 1.42, belly: .5, limb: 1.12, head: 1 },
 };
 export const SKINS = ['#fbd9bc', '#f3c49c', '#e6ad80', '#d8976a', '#c58355', '#a96c42', '#8a5535', '#6b4029'];
@@ -29,7 +32,7 @@ export function comboCount() { return Object.keys(BODIES).length * SKINS.length 
 export const STYLE_MAKERS = {}; // filled by src/styles
 export function createCharacter(seed = 1, o = {}) {
   const R = new Rng(seed * 2654435 + 11);
-  const bodyName = o.bodyType ?? R.pick(Object.keys(BODIES)), B = BODIES[bodyName];
+  const bodyName = o.bodyType ?? R.pick(Object.keys(BODIES).filter(k => !BODIES[k].manual)), B = BODIES[bodyName];
   const S = 400 * B.stature, legL = 130 * B.leg * B.stature, armL = 126 * B.arm * B.stature, head = 76 * B.head;
   const hair = { style: R.pick(HAIRSTYLES), color: R.pick(HAIR_COLORS.slice(0, 7)), ...o.hair };
   const dressy = R.next() < .22;
@@ -53,6 +56,7 @@ export function createCharacter(seed = 1, o = {}) {
   // Things that can't be worn together.
   if (spec.acc.includes('glasses') && spec.acc.includes('shades')) spec.acc = spec.acc.filter(a => a !== 'glasses');
   { const hats = ['cap', 'capback', 'hardhat', 'fedora', 'crown'].filter(a => spec.acc.includes(a)); if (hats.length > 1) spec.acc = spec.acc.filter(a => !hats.slice(1).includes(a)); if (hair.style === 'hijab' || hair.style === 'afro') spec.acc = spec.acc.filter(a => !hats.includes(a)); }
+  if (spec.bottom.type === 'dhoti' && !o.bottom?.color) spec.bottom.color = DHOTI; // a dhoti is off-white unless asked otherwise
   if (o.style && STYLE_MAKERS[o.style]) STYLE_MAKERS[o.style](spec, o); else if (o.style) spec.style = o.style;
   return spec;
 }

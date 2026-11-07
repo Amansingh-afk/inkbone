@@ -25,13 +25,14 @@ const POINT = {
   flank: (s, b, near) => add3(s.waist, s.chF([near * b.shoulder * 1.2, b.torso * .1, -b.shoulder * .3])),
   hip: (s, b, near) => add3(s.waist, s.chF([near * b.shoulder * 1.12, -b.torso * .1, -b.shoulder * .3])),
 };
+const TOE = .55; // heel lift for tiptoe, radians
 const REACH = { rPole: [.2, -1, 0], rPoleW: 1 }, BOTH = { rPole: [.3, -1, 0], rPoleW: 1, lPole: [.3, -1, 0], lPoleW: 1 };
 export const DUETS = {
   handshake: { dur: 2.3, gap: (A, B) => Math.max((armOf(A) + armOf(B)) * .72, heads(A, B, 1.44)), face: [1.05, -1.05],
     a: { dur: 2.3, keys: [[0, { expr: 'smile' }], [.42, { ...REACH, rh: [.1, -.34, .74], rhShape: 'grip', lean: .07, expr: 'happy' }, 'io'], [1.7, {}], [2.2, { rh: rest.rh, rhShape: 'relax', lean: 0, expr: 'smile' }, 'io']] },
     b: { dur: 2.3, keys: [[0, { expr: 'smile' }], [.46, { ...REACH, rh: [.1, -.34, .74], rhShape: 'grip', lean: .05, expr: 'happy' }, 'io'], [1.7, {}], [2.2, { rh: rest.rh, rhShape: 'relax', lean: 0, expr: 'smile' }, 'io']] },
     links: [{ meet: ['r', 'r'], t: [.44, 1.68], in: .16, out: .2, shake: [.07, 3, .55, 1.55] }] },
-  hug: { dur: 2.6, gap: (A, B) => Math.max((armOf(A) + armOf(B)) * .24, heads(A, B, .9)), face: [.8, -2.25],
+  hug: { dur: 2.6, wrap: true, gap: (A, B) => Math.max((armOf(A) + armOf(B)) * .24, heads(A, B, .9)), face: [.8, -2.25],
     a: { dur: 2.6, keys: [[0, { expr: 'happy' }], [.5, { ...BOTH, rh: [.2, .02, .6], lh: [.2, .02, .6], rhShape: 'relax', lhShape: 'relax', lean: .08, expr: 'content', headRoll: .08 }, 'io'], [1.3, { side: .03 }, 'io'], [2, { side: -.02 }, 'io'], [2.5, { side: 0, rh: rest.rh, lh: rest.lh, lean: 0, headRoll: 0, expr: 'happy' }, 'io']] },
     b: { dur: 2.6, keys: [[0, {}], [.55, { ...BOTH, rh: [.2, -.18, .6], lh: [.2, -.18, .6], lean: .08, headRoll: -.06 }, 'io'], [1.3, { side: -.02 }, 'io'], [2, { side: .02 }, 'io'], [2.5, { side: 0, rh: rest.rh, lh: rest.lh, lean: 0, headRoll: 0 }, 'io']] },
     links: [{ a: 'r', to: 'backR', t: [.5, 2.1], in: .3, out: .35 }, { a: 'l', to: 'backL', t: [.5, 2.1], in: .3, out: .35 }, { b: 'r', to: 'flank', t: [.55, 2.05], in: .3, out: .35 }, { b: 'l', to: 'hip', t: [.55, 2.05], in: .3, out: .35 }] },
@@ -65,25 +66,37 @@ const weight = (l, t) => { const [t0, t1] = l.t; if (t < t0 - (l.in ?? 0) || t >
 const beat = (l, t, arm) => { if (!l.shake) return 0; const [amt, hz, from, to] = l.shake; if (t < from || t > to) return 0; return Math.sin((t - from) * hz * 2 * Math.PI) * amt * arm; };
 const pick = (s, hand) => (hand === 'r' ? s.R : s.L).h;
 // Both poses and every target at time t. Positions are measured from the middle of the pair at scale 1.
-export function solveDuet(d, A, B, tIn) {
-  const t = d.loop ? tIn : Math.min(tIn, d.dur), T = Math.floor(t * 12 + 1e-6) / 12, gap = d.gap(A, B), lead = d.lead === 'a', ax = (lead ? 1 : -1) * gap / 2, bx = -ax, pa = poseAt(d.a, t, { facing: d.face[0] }), pb = poseAt(d.b, t, { facing: d.face[1] }), over = [{}, {}], spots = [];
+// The gap a duet asks for, closed up until every reaching hand gets there within 1.4 arm lengths in 3D, all through its contact: wide shoulders and short arms need it closer than the side-to-side spacing suggests.
+const fitted = new WeakMap();
+function fitGap(d, A, B) { let byB = fitted.get(A); if (!byB) fitted.set(A, byB = new WeakMap()); let byD = byB.get(B); if (!byD) byB.set(B, byD = new Map()); if (byD.has(d)) return byD.get(d);
+  let gap = d.gap(A, B); const floor = heads(A, B, .62);
+  for (let n = 0; n < 4; n++) { let short = 0; for (const l of d.links ?? []) { if (l.meet) continue; for (let tm = Math.max(0, l.t[0]); tm <= Math.min(d.dur, l.t[1]) + 1e-6; tm += 1 / 12) { const S = solveDuet(d, A, B, tm, gap), i = l.a ? 0 : 1, who = i ? B : A, h = l.a ?? l.b, sk = solve(who, { ...poseAt(i ? d.b : d.a, tm, { facing: d.face[i] }), ...S.over[i], [h + 'Stretch']: 0 }), Sh = (h === 'r' ? sk.R : sk.L).s, T = S.over[i][h + 'Target']; if (!T) continue; const D = Math.hypot(T[0] - (Sh[0] - sk.root[0]), T[1] - Sh[1], T[2] - (Sh[2] - sk.root[2])), over = D - armOf(who) * .985 * 1.4; if (over > short) short = over; } }
+    if (short <= 1) break; gap = Math.max(floor, gap - short); }
+  byD.set(d, gap); return gap; }
+export function solveDuet(d, A, B, tIn, gapIn) {
+  const t = d.loop ? tIn : Math.min(tIn, d.dur), T = Math.floor(t * 12 + 1e-6) / 12, gap = gapIn ?? fitGap(d, A, B), lead = d.lead === 'a', ax = (lead ? 1 : -1) * gap / 2, bx = -ax, pa = poseAt(d.a, t, { facing: d.face[0] }), pb = poseAt(d.b, t, { facing: d.face[1] }), over = [{}, {}], spots = [];
   // The taller one stoops toward the shorter one, the way people do, easing in and out of the duet.
-  const ease = d.loop ? 1 : smooth(clamp(Math.min(T, d.dur - T) / .35)), rise = solve(A, pa).chest[1] - solve(B, pb).chest[1], tall = rise >= 0 ? 0 : 1, gapH = Math.abs(rise); if (gapH > 24) { const P0 = tall ? pb : pa, leg = (tall ? B : A).body.thigh + (tall ? B : A).body.shin; over[tall].crouch = (P0.crouch ?? 0) + clamp((gapH - 24) / (leg * 2.6), 0, .2) * ease; over[tall].lean = (P0.lean ?? 0) + clamp(gapH / 560, 0, .2) * ease; P0.crouch = over[tall].crouch; P0.lean = over[tall].lean; }
+  const ease = d.loop ? 1 : smooth(clamp(Math.min(T, d.dur - T) / .35)), rise = solve(A, pa).chest[1] - solve(B, pb).chest[1], tall = rise >= 0 ? 0 : 1, gapH = Math.abs(rise); if (gapH > 24) { const P0 = tall ? pb : pa, leg = (tall ? B : A).body.thigh + (tall ? B : A).body.shin; over[tall].crouch = (P0.crouch ?? 0) + clamp((gapH - 24) / (leg * 2.2), 0, .32) * ease; over[tall].lean = (P0.lean ?? 0) + clamp(gapH / 480, 0, .3) * ease; P0.crouch = over[tall].crouch; P0.lean = over[tall].lean; }
+  // ...and the shorter one goes up on tiptoe when it is the one reaching up.
+  const low = 1 - tall; if (gapH > 50 && (d.links ?? []).some(l => !l.meet && (low ? l.b : l.a))) { const P1 = low ? pb : pa, k = clamp((gapH - 50) / 260, 0, 1) * ease; for (const [key, v] of [['hop', .07], ['lPitch', TOE], ['rPitch', TOE]]) { over[low][key] = (P1[key] ?? 0) + v * k; P1[key] = over[low][key]; } }
   const sa = solve(A, pa), sb = solve(B, pb), world = (v, ox) => [v[0] + ox, v[1], v[2]], shoulder = (s, hand, ox) => world((hand === 'r' ? s.R : s.L).s, ox);
-  // A little cartoon stretch when the target is just out of reach; arms never pass 1.5 times their length.
-  const aim = (i, s, spec, ox, hand, P, w) => { over[i][hand + 'Target'] = [P[0] - ox - s.root[0], P[1], P[2] - s.root[2]]; over[i][hand + 'TargetW'] = w; const Sh = shoulder(s, hand, ox), need = Math.hypot(P[0] - Sh[0], P[1] - Sh[1], P[2] - Sh[2]) / (armOf(spec) * .985); if (need > 1) over[i][hand + 'Stretch'] = Math.min(.5, need - 1) * w; };
+  // A little cartoon stretch when the target is just out of reach; arms never pass 1.72 times their length (only short arms on a big gap get near that).
+  const aim = (i, s, spec, ox, hand, P, w) => { over[i][hand + 'Target'] = [P[0] - ox - s.root[0], P[1], P[2] - s.root[2]]; over[i][hand + 'TargetW'] = w; const Sh = shoulder(s, hand, ox), need = Math.hypot(P[0] - Sh[0], P[1] - Sh[1], P[2] - Sh[2]) / (armOf(spec) * .985); if (need > 1) over[i][hand + 'Stretch'] = Math.min(.72, need - 1) * w; };
   for (const l of d.links ?? []) { const w = weight(l, T);
     if (l.meet) { const H0 = world(pick(sa, l.meet[0]), ax), H1 = world(pick(sb, l.meet[1]), bx), S0 = shoulder(sa, l.meet[0], ax), S1 = shoulder(sb, l.meet[1], bx), M = [(H0[0] + H1[0]) / 2, lerp(Math.min(H0[1], H1[1]), Math.max(H0[1], H1[1]), .3) + beat(l, T, armOf(A)), (H0[2] + H1[2]) / 2]; for (let n = 0; n < 3; n++) for (const [Sh, spec, F] of [[S0, A, 1], [S1, B, 1]]) { const dx = M[0] - Sh[0], dy = M[1] - Sh[1], dz = M[2] - Sh[2], D = Math.hypot(dx, dy, dz), reach = armOf(spec) * 1.2; if (D > reach) { const k = (D - reach) / D * .5 * F; M[0] -= dx * k; M[1] -= dy * k; M[2] -= dz * k; } } spots.push(M); if (w > 0) { aim(0, sa, A, ax, l.meet[0], M, w); aim(1, sb, B, bx, l.meet[1], M, w); } continue; }
     const i = l.a ? 0 : 1, me = i ? sb : sa, you = i ? sa : sb, mx = i ? bx : ax, yx = i ? ax : bx, Y = (i ? A : B).body, dist = q => Math.abs(POINT[l.to](you, Y, q)[0] + yx - mx), near = dist(1) <= dist(-1) ? 1 : -1, P = world(POINT[l.to](you, Y, near), yx); P[1] += beat(l, T, armOf(i ? B : A)); spots.push(P); if (w > 0) aim(i, me, i ? B : A, mx, l.a ?? l.b, P, w); }
   return { t, gap, ax, bx, over, spots, faces: d.face };
 }
-export const duetGap = (name, A, B) => DUETS[name].gap(A, B); // how far apart two people must stand, before scale: bring them to this distance before the duet starts
+export const duetGap = (name, A, B) => fitGap(DUETS[name], A, B); // how far apart two people must stand, before scale: bring them to this distance before the duet starts
 export function duetDur(name) { const d = DUETS[name]; return d.loop ? d.dur : d.dur + ((d.a.hits ?? [])[0]?.stop ?? 0); }
 // Draws the pair at (x, y), the point on the ground midway between them.
 export function drawDuet(ink, A, B, name, tIn, { x = 0, y = 0, scale = 1, clock = tIn, grade = null, shadow = true, weightK = 1 } = {}) {
   const d = DUETS[name]; if (!d) throw new Error('no duet ' + name); const S = solveDuet(d, A, B, tIn), t = S.t, ax = x + S.ax * scale, bx = x + S.bx * scale, opt = (ox, i) => ({ x: ox, y, scale, facing: S.faces[i], overrides: S.over[i], clock, grade, shadow, weightK, cues: false });
-  const drawA = (o = {}) => drawAct(ink, A, d.a, t, { ...opt(ax, 0), ...o }), drawB = () => drawAct(ink, B, d.b, t, opt(bx, 1)), parcel = () => { const p = d.prop; if (!p) return; const useB = t >= p.at, s = useB ? solve(B, { ...poseAt(d.b, t, { facing: S.faces[1] }), ...S.over[1] }) : solve(A, { ...poseAt(d.a, t, { facing: S.faces[0] }), ...S.over[0] }), q = pr(pick(s, useB ? p.to : p.from)), hr = (useB ? B : A).body.handR, w = hr * 1.5, h = hr * 1.15, px = (useB ? bx : ax) + q[0] * scale, py = y + q[1] * scale; ink.push(px, py - h * 1.05 * scale, scale); ink.shape([[-w, -h], [w, -h], [w, h], [-w, h]], { fill: '#c7a77a', shade: '#a98757', shadeBy: 4, lw: 4, hard: true }); ink.line([[-w, 0], [w, 0]], { lw: 3, color: '#8c6d44', even: 1, hard: true }); ink.line([[0, -h], [0, h]], { lw: 3, color: '#8c6d44', even: 1, hard: true }); ink.pop(); };
-  drawB(); drawA(); parcel();
+  const drawA = (o = {}) => drawAct(ink, A, d.a, t, { ...opt(ax, 0), ...o }), drawB = (o = {}) => drawAct(ink, B, d.b, t, { ...opt(bx, 1), ...o }), poseOf = (who, i) => solve(who, { ...poseAt(i ? d.b : d.a, t, { facing: S.faces[i] }), ...S.over[i] }), farArm = (who, i) => { const s = poseOf(who, i); return s.L.s[2] < s.R.s[2] ? 'L' : 'R'; }, parcel = () => { const p = d.prop; if (!p) return; const useB = t >= p.at, s = useB ? solve(B, { ...poseAt(d.b, t, { facing: S.faces[1] }), ...S.over[1] }) : solve(A, { ...poseAt(d.a, t, { facing: S.faces[0] }), ...S.over[0] }), q = pr(pick(s, useB ? p.to : p.from)), hr = (useB ? B : A).body.handR, w = hr * 1.5, h = hr * 1.15, px = (useB ? bx : ax) + q[0] * scale, py = y + q[1] * scale; ink.push(px, py - h * 1.05 * scale, scale); ink.shape([[-w, -h], [w, -h], [w, h], [-w, h]], { fill: '#c7a77a', shade: '#a98757', shadeBy: 4, lw: 4, hard: true }); ink.line([[-w, 0], [w, 0]], { lw: 3, color: '#8c6d44', even: 1, hard: true }); ink.line([[0, -h], [0, h]], { lw: 3, color: '#8c6d44', even: 1, hard: true }); ink.pop(); };
+  // wrap: each one's far arm goes behind the other body, and B's near arm comes round in front of A, unless B is so much taller that it would cross A's face
+  if (d.wrap) { const fa = farArm(A, 0), nb = farArm(B, 1) === 'L' ? 'R' : 'L', sa = poseOf(A, 0), sb = poseOf(B, 1), over = sb[nb].s[1] < sa.head[1] + A.body.headH * .4; drawA({ arms: { only: fa }, shadow: false }); drawB(over ? { arms: { skip: nb } } : {}); drawA({ arms: { skip: fa } }); if (over) drawB({ arms: { only: nb }, shadow: false }); }
+  else { drawB(); drawA(); }
+  parcel();
   for (const f of d.fx ?? []) { const dt = t - f.t, def = FX[f.fx]; if (!def || dt < 0 || dt > (def.dur ?? 1)) continue; const q = pr(S.spots[f.link] ?? [0, 0, 0]); def.draw(ink, Math.floor(dt * 24) / 24, { x: x + q[0] * scale, y: y + q[1] * scale, scale: (f.scale ?? 1) * scale, palette: def.palette, seed: 3 }); }
   return S;
 }

@@ -148,14 +148,14 @@ const dot = (ink, p, r, fill) => ink.ell(p[0], p[1], r, r, { fill, stroke: false
 const seam = (ink, pts, col, lw = 2.6) => ink.line(pts, { lw, color: col, even: 1 });
 function pocket(ink, S, lv, f, down, w, h, col, ink2, flap = true) { const a = S(lv, f - w, down), b0 = S(lv, f + w, down), c = S(lv, f + w, down + h), d = S(lv, f - w, down + h), m = S(lv, f, down + h * 1.16); ink.shape([a, b0, c, m, d], { fill: col, lw: 2.6, hard: true }); if (flap) { const e = S(lv, f - w * 1.08, down - 1), g = S(lv, f + w * 1.08, down - 1), i = S(lv, f + w * 1.04, down + h * .34), j = S(lv, f, down + h * .46), k = S(lv, f - w * 1.04, down + h * .34); ink.shape([e, g, i, j, k], { fill: lighten(col, .1), lw: 2.6, hard: true }); dot(ink, S(lv, f, down + h * .26), 2.2, ink2); } }
 export function detailsFront(ink, spec, sk, rg, col, path) {
-  const b = spec.body, yaw = sk.chestYaw, cy = cos(yaw), t = spec.top, type = t.type, ac = t.accent, inner = t.inner ?? '#f5f1e6', skin = spec.skin, dark = darken(col, .42), C = ink.ctx; if (cy < .25) return;
-  const S = surface(spec, sk), clipOn = fn => { C.save(); C.clip(path); fn(); C.restore(); };
+  const b = spec.body, yaw = sk.chestYaw, cy = cos(yaw), t = spec.top, type = t.type, ac = t.accent, inner = t.inner ?? '#f5f1e6', skin = spec.skin, dark = darken(col, .42), C = ink.ctx; if (cy < (WRAPS.includes(type) ? -.1 : .25)) return;
+  const S = surface(spec, sk), Sf = S, clipOn = fn => { C.save(); C.clip(path); fn(); C.restore(); };
   const panel = (wn, wc, ww, wh, fill) => { const pts = [S('neck', wn, -3), S('chest', wc, 0), S('waist', ww, 0), S('hem', wh, 6), S('hem', -wh, 6), S('waist', -ww, 0), S('chest', -wc, 0), S('neck', -wn, -3)]; clipOn(() => ink.shape(pts, { fill, shade: shadeOf(fill), shadeBy: 5, stroke: false })); return pts; };
   const edges = (wn, wc, ww, wh, lw = 3.4) => { for (const q of [1, -1]) clipOn(() => ink.line([S('neck', q * wn, -3), S('chest', q * wc, 0), S('waist', q * ww, 0), S('hem', q * wh, 6)], { lw, even: 1 })); };
   const collar = (fill, spread = 1) => { for (const q of [1, -1]) ink.shape([S('neck', q * 1.02, -4), S('chest', q * .62 * spread, -13), S('chest', q * .3 * spread, -3), S('neck', q * .28, 5)], { fill, lw: 3.2, hard: true }); };
   const placket = (lv0 = 'neck', n = 4) => { seam(ink, [S(lv0, .08, 8), S('chest', .07, 0), S('waist', .07, 0), S('hem', .07, 0)], dark); seam(ink, [S(lv0, -.08, 8), S('chest', -.07, 0), S('waist', -.07, 0), S('hem', -.07, 0)], dark); for (let i = 0; i < n; i++) dot(ink, S('chest', 0, lerp(-14, 60, i / max(1, n - 1))), 2.3, lighten(col, .5)); };
   if (type === 'tee' || type === 'stripes' || type === 'graphic' || type === 'dress' || type === 'vest' || type === 'sari' || type === 'hivis') crew(ink, S, skin);
-  if (type === 'sari') { clipOn(() => { const bd = t.border ?? ac, drape = [S('sh', -.95, -4), S('sh', -.42, -6), S('chest', .34, 14), S('waist', .96, 2), S('hip', 1.06, 6), S('hip', .62, 20), S('waist', .22, 24), S('chest', -.62, 30)]; ink.shape(drape, { fill: lighten(col, .1), shade: col, shadeBy: 4, lw: 3 }); ink.line([S('sh', -.42, -6), S('chest', .34, 14), S('waist', .96, 2)], { lw: 7, color: bd, even: 1 }); for (const f of [-.3, .1, .5]) seam(ink, [S('hip', f, 20), S('hem', f * 1.1, 34)], dark, 2.6); }); }
+  if (type === 'sari') clipOn(() => { const S = (lv, f, d) => Sf(lv, -f, d); const bd = t.border ?? ac, r = rg.skirt, hemY = r ? r.c[1] - 4 : S('hem', 0, 60)[1], pl = lighten(col, .06); hemBorder(ink, rg, bd); if (cy > .25) { const top = [-.02, .3].map(f => S('waist', f, 14)), fan = [-.32, .62].map(f => [S('hip', f * 1.5, 0)[0], hemY + 4]); ink.shape([top[0], top[1], fan[1], fan[0]], { fill: pl, shade: col, shadeBy: 3, lw: 3 }); for (let i = 1; i < 6; i++) { const u = i / 6; seam(ink, [[lerp(top[0][0], top[1][0], u), lerp(top[0][1], top[1][1], u)], [lerp(fan[0][0], fan[1][0], u), hemY - 2]], dark, 2.4); } } const drape = [S('sh', -1, -6), S('sh', -.38, -8), S('chest', .3, 12), S('waist', .98, 0), S('hip', 1.08, 4), S('hip', .72, 22), S('waist', .3, 26), S('chest', -.5, 34), S('chest', -1.04, 20)]; ink.shape(drape, { fill: lighten(col, .1), shade: col, shadeBy: 4, lw: 3 }); ink.line([S('sh', -.38, -8), S('chest', .3, 12), S('waist', .98, 0)], { lw: 9, color: bd, even: 1 }); for (const f of [.3, .62]) seam(ink, [S('chest', f - .9, 6), S('waist', f + .1, 14)], dark, 2.4); });
   if (type === 'hivis') clipOn(() => { const v = t.vest ?? '#f4772a'; for (const q of [1, -1]) ink.shape([S('neck', q * .6, 0), S('sh', q * .96, 2), S('chest', q * 1.05, 16), S('hem', q * 1.06, 0), S('hem', q * .1, 0), S('chest', q * .1, 0)], { fill: v, lw: 3, hard: true }); for (const [lv, d] of [['chest', 26], ['waist', 8]]) for (const q of [1, -1]) ink.line([S(lv, q * .12, d), S(lv, q * 1.02, d)], { lw: 8, color: '#e8e8e0', even: 1 }); });
   if (type === 'uniform') { for (const q of [1, -1]) ink.shape([S('sh', q * .86, -3), S('sh', q * .46, -3), S('sh', q * .46, 7), S('sh', q * .86, 7)], { fill: darken(col, .24), lw: 2.6, hard: true }); dot(ink, S('chest', -.56, -6), 3.4, '#e5b43a'); }
   if (type === 'graphic') {
@@ -219,12 +219,22 @@ export function detailsFront(ink, spec, sk, rg, col, path) {
   // a couple of soft folds at the waist
   if (!['dress', 'vest', 'puffer', 'kurta', 'nehru', 'sari', 'hivis'].includes(type)) clipOn(() => { for (const q of [1, -1]) ink.line([S('waist', q * .94, -6), S('waist', q * .62, 4), S('waist', q * .4, 6)], { lw: 3, color: dark }); });
 }
-function detailsBack(ink, spec, sk, rg, col, path) {
-  const cy = cos(sk.chestYaw), t = spec.top, type = t.type, dark = darken(col, .42), C = ink.ctx; if (cy > -.25) return; const S = surface(spec, sk, true);
+// Garments that go all the way round, so they show from the side and the back as well.
+const WRAPS = ['hivis', 'sari'];
+export const DHOTI_BORDER = '#a33a2c';
+// The dhoti's gathered front pleats, a fan from the waist to between the shins.
+export function dhotiPleats(ink, spec, sk, cc) { const b = spec.body, Sg = surface(spec, sk), t0 = Sg('hip', -.1, 6), t1 = Sg('hip', .2, 6), k = [pr(sk.lf.k), pr(sk.rf.k)], a = [pr(sk.lf.a), pr(sk.rf.a)], mid = q => [(q[0][0] + q[1][0]) / 2, (q[0][1] + q[1][1]) / 2], km = mid(k), am = mid(a), y = lerp(km[1], am[1], .62), x = lerp(km[0], am[0], .62), w = b.legR * 1.05, p = [t0, t1, [x + w, y], [x + w * .3, y + 7], [x - w * .4, y - 2], [x - w, y + 4]]; ink.shape(p, { fill: lighten(cc, .04), shade: darken(cc, .1), shadeBy: 4, lw: 3 }); for (let i = 1; i < 4; i++) { const u = i / 4; ink.line([[lerp(t0[0], t1[0], u), lerp(t0[1], t1[1], u) + 4], [lerp(x - w, x + w, u), y - 2]], { lw: 2.2, color: darken(cc, .22) }); } }
+// A wide border along the bottom of a long garment, clipped to it.
+function hemBorder(ink, rg, color, h = 16) { const r = rg.skirt; if (!r) return; ink.shape([[r.c[0] - r.w * 1.6, r.c[1] - h], [r.c[0] + r.w * 1.6, r.c[1] - h], [r.c[0] + r.w * 1.6, r.c[1] + 30], [r.c[0] - r.w * 1.6, r.c[1] + 30]], { fill: color, stroke: false }); ink.line([[r.c[0] - r.w * 1.6, r.c[1] - h], [r.c[0] + r.w * 1.6, r.c[1] - h]], { lw: 2.6, color: darken(color, .3), even: 1 }); }
+export function detailsBack(ink, spec, sk, rg, col, path) {
+  const cy = cos(sk.chestYaw), t = spec.top, type = t.type, dark = darken(col, .42), C = ink.ctx; if (cy > (WRAPS.includes(type) ? .1 : -.25)) return; const S = surface(spec, sk, true);
   C.save(); C.clip(path);
   if (['shirt', 'jacket', 'blazer', 'labcoat', 'kurta'].includes(type)) { const q = []; for (let i = 0; i <= 8; i++) { const f = -1 + 2 * i / 8; q.push(S('sh', f, 14)); } seam(ink, q, dark); }
   if (type === 'jacket') for (const q of [1, -1]) seam(ink, [S('sh', q * .4, 14), S('waist', q * .32, 10), S('hem', q * .42, 4)], dark);
   if (['blazer', 'labcoat'].includes(type)) seam(ink, [S('chest', 0, 0), S('waist', 0, 0), S('hem', 0, 0)], dark, 3);
+  if (type === 'hivis') { const v = t.vest ?? '#f4772a', band = '#e8e8e0'; ink.shape([S('sh', -.94, 0), S('sh', .94, 0), S('chest', 1.05, 16), S('hem', 1.06, 0), S('hem', -1.06, 0), S('chest', -1.05, 16)], { fill: v, shade: darken(v, .12), shadeBy: 5, lw: 3, hard: true }); for (const q of [.5, -.5]) ink.line([S('sh', q, -2), S('chest', q, 24)], { lw: 8, color: band, even: 1 }); for (const [lv, d] of [['chest', 26], ['waist', 8]]) ink.line([S(lv, -1.02, d), S(lv, 1.02, d)], { lw: 8, color: band, even: 1 }); }
+  // the pallu falls from the left shoulder down the back, with its border on the inside edge
+  if (type === 'sari') { const bd = t.border ?? t.accent, M = (lv, f, d) => S(lv, -f, d); hemBorder(ink, rg, bd); ink.shape([M('sh', 1.02, -6), M('sh', .3, -4), M('chest', .2, 30), M('waist', .16, 30), M('hip', .26, 40), M('hip', 1.12, 36), M('waist', 1.06, 0)], { fill: lighten(col, .16), shade: col, shadeBy: 5, lw: 3 }); ink.line([M('sh', .3, -4), M('chest', .2, 30), M('waist', .16, 30), M('hip', .26, 40)], { lw: 9, color: bd, even: 1 }); ink.line([M('hip', .26, 40), M('hip', 1.12, 36)], { lw: 9, color: bd, even: 1 }); for (const f of [.55, .85]) seam(ink, [M('sh', f, 4), M('waist', f + .02, 16), M('hip', f + .06, 30)], dark, 2.4); }
   if (type === 'nehru') { const v = t.vest ?? t.accent; ink.shape([S('sh', -1, -4), S('sh', 1, -4), S('hip', 1.1, 4), S('hip', -1.1, 4)], { fill: v, shade: shadeOf(v), shadeBy: 6, lw: 3.2, hard: true }); }
   if (type === 'puffer') for (const [lv, d] of [['sh', 18], ['chest', 16], ['chest', 44], ['waist', 14], ['hip', -14]]) { const q = []; for (let i = 0; i <= 8; i++) { const f = -1 + 2 * i / 8; q.push(S(lv, f, d + (1 - f * f) * 4)); } seam(ink, q, darken(col, .34), 3); }
   C.restore();
@@ -411,10 +421,12 @@ const hatsOn = (ink, spec, hy, pitch) => { const R = spec.body.headR, H = spec.b
 function hatsOverHair(ink, spec, sk, pose) { const c = pr(sk.head); ink.push(c[0], c[1], 1, 1, -sk.headRoll + headLean(spec.seed)); if (pose.headSq) ink.ctx.scale(1 + pose.headSq, 1 - pose.headSq); hatsOn(ink, spec, sk.headYaw, sk.headPitch); ink.pop(); }
 
 // ---------- whole character ----------
-export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null } = {}) {
+// arms: { only: 'L' } draws just that arm, { skip: 'L' } everything but it, so two people can wrap round each other.
+export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, arms = null } = {}) {
   const b = spec.body, p = sk.p, expr = resolveExpr(p.expr ?? 'neutral', p.exprFrom, p.exprF), top = TOP[spec.top.type] ?? TOP.tee, col = spec.top.color;
   const seed = spec.seed * 97 + 3, rootZ = sk.root[2];
   const arm = (A, s) => {
+    if (arms?.skip && A === sk[arms.skip]) return;
     const a = pr(A.s), e = pr(A.e), h = pr(A.h), tb = bend(a, e, h, b.armR * 1.02, b.armR * .84, b.armR * .66);
     const sh = boilTube(ink, tb, seed + s * 7);
     if (top.sleeve < 1) ink.blob([sh], spec.skin, { shade: shadeOf(spec.skin) });
@@ -448,11 +460,11 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null } 
       if (chappal) { ink.blob(ankleItems(P, spec, true), spec.skin, { shade: shadeOf(spec.skin) }); drawToes(ink, spec, F); drawSlipperStrap(ink, spec, F); } else if (!tucked) drawShoe(ink, spec, F);
       if (B.type === 'dhoti') ink.blob([calf], spec.skin, { shade: shadeOf(spec.skin) });
       if (spec.top.type !== 'dress' && B.type !== 'skirt' && !(TOP[spec.top.type]?.skirt > .9)) {
-        const ty = B.type, fit = ty === 'dhoti' ? u => 1.3 + .95 * u ** 1.1 : ty === 'wide' ? u => 1.1 + 1.05 * u ** 1.5 : ty === 'joggers' ? u => 1.12 - .14 * u : ty === 'cargo' ? u => 1.12 + .22 * u ** 2 : u => 1.04 + .2 * u ** 3, fl = tb.r.map((r, i, all) => r * fit(i / (all.length - 1))), end = cut({ pts: tb.pts, r: fl }, tucked ? .8 : ty === 'joggers' ? .96 : ty === 'dhoti' ? .8 : .985), T = boilTube(ink, end, seed + s * 13), cc = B.color, dk = darken(cc, .42);
+        const ty = B.type, fit = ty === 'dhoti' ? u => 1.55 + .7 * u ** .8 : ty === 'wide' ? u => 1.1 + 1.05 * u ** 1.5 : ty === 'joggers' ? u => 1.12 - .14 * u : ty === 'cargo' ? u => 1.12 + .22 * u ** 2 : u => 1.04 + .2 * u ** 3, fl = tb.r.map((r, i, all) => r * fit(i / (all.length - 1))), end = cut({ pts: tb.pts, r: fl }, tucked ? .8 : ty === 'joggers' ? .96 : ty === 'dhoti' ? .9 : .985), T = boilTube(ink, end, seed + s * 13), cc = B.color, dk = darken(cc, .42);
         hemTube(ink, T, cc);
         jointFolds(ink, h, k, a, b.legR * .9, dk);
         const n = T.pts.length, at0 = f => { const i = Math.min(n - 1, Math.floor(n * f)), q = T.pts[i], w = T.pts[Math.min(n - 1, i + 1)], dx = w[0] - q[0], dy = w[1] - q[1], l = hypot(dx, dy) || 1; return { q, ux: dx / l, uy: dy / l, nx: -dy / l, ny: dx / l, r: T.r[i] }; };
-        if (ty === 'dhoti') { const g = at0(.5); ink.line([[g.q[0] - g.nx * g.r * .5, g.q[1] - g.ny * g.r * .5 - 18], [g.q[0], g.q[1]], [g.q[0] + g.nx * g.r * .3, g.q[1] + g.ny * g.r * .3 + 30]], { lw: 2.6, color: dk }); }
+        if (ty === 'dhoti') { const from = Math.floor(n * .86), bd = { pts: T.pts.slice(from), r: T.r.slice(from).map(r => r * 1.02) }; if (bd.pts.length > 1) limbBand(ink, bd, B.accent ?? DHOTI_BORDER); for (const [f0, f1, o] of [[.3, .8, -.35], [.42, .84, .3]]) { const g = at0(f0), e = at0(f1); ink.line([[g.q[0] + g.nx * g.r * o, g.q[1] + g.ny * g.r * o], [e.q[0] + e.nx * e.r * o * 1.3, e.q[1] + e.ny * e.r * o * 1.3]], { lw: 2.4, color: darken(cc, .2) }); } }
         if (ty === 'jeans' && B.roll !== false && !tucked) { const from = Math.floor(n * .88), cf = { pts: T.pts.slice(from), r: T.r.slice(from).map(r => r * 1.2) }; if (cf.pts.length > 1) limbBand(ink, cf, lighten(cc, .28)); }
         if (ty === 'jeans') { const P0 = T.pts.filter((_, i) => i % 3 === 0).map((q, i2) => { const g = at0(i2 * 3 / n); return [q[0] + g.nx * s * g.r * .55, q[1] + g.ny * s * g.r * .55]; }); ink.line(P0, { lw: 2, color: lighten(cc, .3), even: 1 }); const g = at0(.86); ink.line([[g.q[0] - g.nx * g.r * .8, g.q[1] - g.ny * g.r * .8], [g.q[0] + g.nx * g.r * .8, g.q[1] + g.ny * g.r * .8]], { lw: 2.4, color: dk, hard: true }); }
         if (ty === 'joggers') { const g = at0(.87); ink.line([[g.q[0] - g.nx * g.r, g.q[1] - g.ny * g.r], [g.q[0] + g.nx * g.r, g.q[1] + g.ny * g.r]], { lw: 3, hard: true }); }
@@ -470,6 +482,7 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null } 
   if (p.sq) { ink.ctx.translate(p.x, 0); ink.ctx.scale(1 + p.sq, 1 - p.sq); ink.ctx.translate(-p.x, 0); }
   if (p.spin) { const dir = sin(p.yaw) >= 0 ? -1 : 1; ink.ctx.translate(p.x, 0); ink.ctx.rotate(p.spin * dir); ink.ctx.translate(-p.x, 0); }
   const armL = sk.L, armR = sk.R, fL = frontArm(armL), fR = frontArm(armR);
+  if (arms?.only) { arm(sk[arms.only], arms.only === 'L' ? 1 : -1); ink.ctx.restore(); return; }
   drawBackLocks(ink, spec, sk, swing);
   if (!backView) drawBackHair(ink, spec, sk, swing, t);
   const overOf = (A, flag) => (A.faceW > .5 ? A.h[2] >= sk.head[2] - b.headR * .1 : flag > .5), oL = overOf(armL, p.overL), oR = overOf(armR, p.overR);
@@ -484,6 +497,7 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null } 
     ink.shape(hipP, { fill: cc, shade: shadeOf(cc), shadeBy: 8, seed: seed + 21 });
     for (const [F] of legsSorted) { const hh = pr(F.h), kk = pr(F.k), f = .36, jn = [lerp(hh[0], kk[0], f), lerp(hh[1], kk[1], f)]; ink.blob([{ pts: [hh, jn], r: b.legR * .86 }], cc, { lw: 0 }); }
     ink.blob([{ pts: [[rg.hip.c[0], rg.hip.c[1] - 2]], r: rg.hip.w * .84 }], cc, { lw: 0 });
+    if (spec.bottom.type === 'dhoti' && cos(sk.hipYaw) > .2) dhotiPleats(ink, spec, sk, cc);
     if (cos(sk.hipYaw) > .25 && ['jeans', 'pants', 'cargo'].includes(spec.bottom.type)) { const Sg = surface(spec, sk), dk = darken(cc, .42), lt = spec.bottom.type === 'jeans' ? lighten(cc, .3) : dk; ink.line([Sg('hip', 0, 0), Sg('hip', 0, 20), Sg('hip', .07, b.torso * .22)], { lw: 2.6, color: dk, even: 1 }); for (const q of [1, -1]) ink.line([Sg('hip', q * .92, -10), Sg('hip', q * .72, 8), Sg('hip', q * .46, 4)], { lw: 2.6, color: lt, even: 1 }); }
   }
   if (spec.bottom.type === 'skirt' && !top.skirt) {
@@ -494,7 +508,8 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null } 
   const nb = pr(sk.neckBase), nt = pr(sk.neckTop), nr = max(b.headR * .28, 13) * (b.belly ? 1.15 : 1);
   ink.blob([{ pts: [[lerp(nb[0], nt[0], -.5), lerp(nb[1], nt[1], -.5)], [nt[0], nt[1] + 3]], r: nr }], spec.skin, { shade: darken(spec.skin, .34) });
   // torso
-  const tp = dense(torsoPoly([top.skirt ? skirtRing(sk, spec, top.skirt, spec.top.type === 'dress' ? 1.3 : 1.08, swing) : tuck ? rg.tuckHem : rg.hem, ...(tuck || top.short ? [] : [rg.hip]), rg.waist, rg.chest, rg.sh, rg.neck]));
+  if (top.skirt) rg.skirt = skirtRing(sk, spec, top.skirt, spec.top.type === 'dress' ? 1.3 : 1.08, swing);
+  const tp = dense(torsoPoly([top.skirt ? rg.skirt : tuck ? rg.tuckHem : rg.hem, ...(tuck || top.short ? [] : [rg.hip]), rg.waist, rg.chest, rg.sh, rg.neck]));
   const path = ink.shape(tp, { fill: col, shade: shadeOf(col), shadeBy: 13, seed: seed + 23 });
   if (spec.top.type === 'stripes') stripesOn(ink, path, rg, col, spec.top.accent);
   if (top.band) { if (top.short) rg.hip = { c: [lerp(rg.hem.c[0], rg.waist.c[0], 1), lerp(rg.hem.c[1], rg.waist.c[1], 1)], w: rg.waist.w }; hemBand(ink, rg, path, top.band === 2 ? spec.top.accent : darken(col, .12), top.short ? .2 : .34); }
