@@ -301,7 +301,8 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
   const fc = f.facial, fcol = f.facialColor;
   if (fc === 'beard' || fc === 'stubble') {
     // Follows the jaw: sideburn at the ear, down the cheek, over the lip. It stops at the ears, so the back of the head stays clear.
-    const top = lon => { const a = abs(lon); return a < .24 ? -.3 : a < .56 ? lerp(-.3, -.47, smooth((a - .24) / .32)) : a < 1.2 ? lerp(-.47, -.1, smooth((a - .56) / .64)) : lerp(-.1, .03, (a - 1.2) / .22); }, up = [], low = [];
+    // A big cartoon head keeps more of its face clear: the beard's top edge drops as the head grows past average.
+    const big = clamp((R - 76) / 16) * .17, top = lon => { const a = abs(lon); return (a < .24 ? -.3 : a < .56 ? lerp(-.3, -.47, smooth((a - .24) / .32)) : a < 1.2 ? lerp(-.47, -.1, smooth((a - .56) / .64)) : lerp(-.1, .03, (a - 1.2) / .22)) - big * (a < 1.2 ? 1 : .6); }, up = [], low = [];
     for (let i = 0; i <= 36; i++) { const lon = -1.42 + 2.84 * i / 36, a = abs(lon), p = P(lon, top(lon)); if (p.z < -R * .1) continue; up.push([p.x, p.y]); const k = smooth(clamp((a - .8) / .62)), q = P(lon, lerp(-1.2, -.16, k), lerp(1.5, 1, k)); low.unshift([q.x, q.y]); }
     if (up.length > 2) {
       C.save(); C.clip(hp); C.fillStyle = fc === 'stubble' ? mix(skin, fcol, .3) : fcol; C.fill(ink.path([...up, ...low], { hard: true }));
