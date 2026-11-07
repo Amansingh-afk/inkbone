@@ -263,7 +263,7 @@ function headOutline(R, H, jaw, yaw, pitch, seed = 1) {
 // Hair = a cap with a real hairline, plus locks rooted on the scalp in 3D, merged into one outline.
 // lon: 0 is the forehead, + is the character's left, PI is the back. lat: 1 is the crown. dir and curl are in head space (left, up, forward).
 
-function drawHead(ink, spec, sk, pose, t, expr, swing = 0) {
+function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
   const b = spec.body, R = b.headR, H = b.headH, hy = sk.headYaw, pitch = sk.headPitch, sy = sin(hy), cyS = cos(hy), cy = abs(cyS), f = spec.face, skin = spec.skin;
   const c = pr(sk.head), P = (lon, lat, rad = 1) => {
     let v = [sin(lon) * cos(lat) * R * rad, sin(lat) * H * rad, cos(lon) * cos(lat) * R * rad]; v = rotX(v, pitch); v = rotY(v, hy);
@@ -403,10 +403,12 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0) {
   }
   if (faceOnly) { ink.pop(); return; }
   drawHairFront(ink, spec, sk, { P, hp, swing });
-  // accessories on the face
-  for (const kind of HATS) if (spec.acc.includes(kind)) drawHat(ink, kind, { R, H, hy, pitch, color: { cap: spec.top.accent, capback: spec.top.accent, hardhat: spec.top.hat, fedora: spec.top.hatColor }[kind], skin });
+  if (hats) hatsOn(ink, spec, hy, pitch);
   ink.pop();
 }
+const hatsOn = (ink, spec, hy, pitch) => { const R = spec.body.headR, H = spec.body.headH; for (const kind of HATS) if (spec.acc.includes(kind)) drawHat(ink, kind, { R, H, hy, pitch, color: { cap: spec.top.accent, capback: spec.top.accent, hardhat: spec.top.hat, fedora: spec.top.hatColor }[kind], skin: spec.skin }); };
+// From behind, hair lies over the head and the hat sits on the hair.
+function hatsOverHair(ink, spec, sk, pose) { const c = pr(sk.head); ink.push(c[0], c[1], 1, 1, -sk.headRoll + headLean(spec.seed)); if (pose.headSq) ink.ctx.scale(1 + pose.headSq, 1 - pose.headSq); hatsOn(ink, spec, sk.headYaw, sk.headPitch); ink.pop(); }
 
 // ---------- whole character ----------
 export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null } = {}) {
@@ -501,7 +503,7 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null } 
   if (spec.acc.includes('scarf')) { const a = pr(sk.neckBase); ink.blob([{ pts: [[a[0] - nr * 1.3, a[1] - 2], [a[0], a[1] + 5], [a[0] + nr * 1.3, a[1] - 2]], r: nr * .6 }], spec.top.accent, { shade: shadeOf(spec.top.accent) }); }
   // arms in front merge at the shoulder with a fill-only patch
   const patch = A => { const a = pr(A.s), cc = top.sleeve > 0 ? col : spec.skin; ink.blob([{ pts: [[a[0], a[1]]], r: b.armR * (top.sleeve > 0 ? 1.08 : .9) }], cc, { lw: 0 }); };
-  const heads = () => { if (backView) { drawHead(ink, spec, sk, p, t, expr, swing); drawBackHair(ink, spec, sk, swing, t); } else drawHead(ink, spec, sk, p, t, expr, swing); };
+  const heads = () => { if (backView) { drawHead(ink, spec, sk, p, t, expr, swing, false); drawBackHair(ink, spec, sk, swing, t); hatsOverHair(ink, spec, sk, p); } else drawHead(ink, spec, sk, p, t, expr, swing); };
   // a hijab lies over hanging arms; a hand raised to the chest stays in front of it
   const veil = !!HAIR[spec.hair.style]?.hijab, ch = pr(sk.chest)[1], first = A => !veil || pr(A.h)[1] > ch + (pr(sk.pelvis)[1] - ch) * .5, putArm = (A, side, on, early) => { if (on && first(A) === early) { arm(A, side); patch(A); } };
   putArm(armL, 1, fL && !oL, true); putArm(armR, -1, fR && !oR, true);
