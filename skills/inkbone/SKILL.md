@@ -1,133 +1,71 @@
 ---
 name: inkbone
-description: Make flat vector cartoon animation in code with Inkbone, an engine with a 3D skeleton, acting as data, procedural characters, flat effects, sets, camera moves and transitions. Use when someone wants animated cartoon characters, acted scenes, walk cycles, character generators, flat toon effects, or a rendered cartoon video, or wants to add moves, effects, outfits or sets to Inkbone.
+description: Make flat vector cartoon animation with Inkbone: write a film as JSON (characters, scenes, moves, camera), then render stills, contact sheets or MP4 from the command line. 2D sets or 3D worlds, round or stickman style, 29 cast members including famous figures, gods and animal-headed characters. Use when someone wants a cartoon scene, animated characters, a character design or turnaround, or a rendered cartoon video, or wants to add moves, outfits, effects or sets to Inkbone.
 ---
 
 # Inkbone
 
-Everything is code and every frame is a pure function of time and seed, so any frame can be rendered alone, re-rendered exactly, and recoloured. There are no image assets.
+Cartoon animation as data. A film is a JSON file; the `inkbone` command checks it and renders it. Every frame is a pure function of time and seed, so any frame re-renders exactly. There are no image assets.
 
-## Before anything
+## Setup
 
-Work in an Inkbone checkout (the folder with `tools/render.mjs`). Run `npm install` once. Chromium comes from `~/.cache/ms-playwright`; if it's missing, run `npx playwright-core install chromium`. Video needs ffmpeg.
+Use it from the Inkbone checkout (`node bin/inkbone.mjs ...`), or from a project that installed it (`npx inkbone ...`, see `reference/install.md`). It needs Node 18+, Chromium from Playwright (`npx playwright-core install chromium` if missing) and ffmpeg for video.
 
-## See before you decide
+## The loop: write, validate, look, fix
 
-You cannot judge animation from code. Render, open the image, fix the worst thing, repeat.
+You can't judge animation from JSON. Always render and open the image before saying it's done.
 
 ```bash
-node tools/list.mjs walk                     # search moves, effects, sets, transitions, expressions
-node tools/render.mjs move:wave --seed 12    # contact sheet: records/move/wave/contact.png
-node tools/render.mjs move:wave --mp4        # video
-node tools/render.mjs reel --still 17.5      # one full-size frame
-node tools/sheet.mjs records/a.png '["punch","get-hit"]' 12 1.2   # moves in even steps, the best view of motion
-node tools/check.mjs                         # errors, determinism, and random characters
-node tools/audit.mjs                         # pose faults in every move, from rig numbers
-node tools/serve.mjs                         # storybook on http://127.0.0.1:8766
+inkbone list walk                         # search everything that exists (moves, cast, heads, hats, sets, worlds...)
+inkbone look zeus                         # one character at six angles: judge a design here
+inkbone validate film.json                # every name checked, with "did you mean" fixes
+inkbone sheet film.json --frames 12       # evenly spaced frames on one image: the best view of a whole film
+inkbone still film.json --t 2.5           # one full-size frame
+inkbone render film.json                  # MP4 beside the film (film.mp4); --out to put it elsewhere
 ```
 
-After any change to hands, faces or hats (`node tools/hats.mjs`), look at `node tools/hands.mjs records/hands.png` or `node tools/faces.mjs records/faces.png`: every pose or face type, large, in every direction. Check close-ups at full size, not just contact sheets: `bash tools/close.sh out.png 'clap .2 0' 'namaste 1 .7'` puts stills side by side (move, time, facing). Flaws in hands, cuffs and faces only show large. Motion bugs only show in consecutive steps.
+Outputs go beside the film unless `--out` says otherwise. `--size 1280x720` renders smaller and faster while you iterate.
 
-## Make a scene
+## A film
 
-A scene is data. Coordinates are a 1920x1080 world with the floor at `FLOOR` (900).
-
-```js
-import { createCharacter, drawReel, FLOOR } from './src/index.js';
-const hero = createCharacter(3, { bodyType: 'stout', hair: { style: 'curly' }, top: { type: 'kurta', color: '#2f9e8f' } });
-const scene = {
-  set: 'kitchen', theme: 'mint', seed: 2, dur: 6,
-  cam: [{ t: 0, x: 960, y: 560, z: 1 }, { t: 3, x: 800, y: 500, z: 1.6, ease: 'io' }],
-  shakes: [{ t: 3, dur: .4, amp: 20 }],
-  fx: [{ t: 3, fx: 'explosion', x: 1500, y: FLOOR + 30 }],
-  actors: [{ spec: hero, x: -100, y: FLOOR + 60, scale: 1.4, track: [
-    { at: 0, move: 'walk', to: 800 },                // travels at the speed its feet move, so feet never skate
-    { at: 3.04, move: 'scared-jump', facing: 1 },
-  ] }],
-  out: { name: 'iris', dur: .8 },
-};
-drawReel(ctx, [scene], t);
+```json
+{
+  "mode": "2d",
+  "characters": {
+    "zeus": "zeus",
+    "kid": { "seed": 12, "bodyType": "stubby", "hair": { "style": "messy" }, "top": { "type": "hoodie", "color": "#d9568f" } }
+  },
+  "scenes": [
+    { "set": "kitchen", "theme": "mint", "dur": 4, "cam": { "x": 960, "y": 560, "z": 1.1 }, "out": { "name": "iris", "dur": 0.8 },
+      "actors": [
+        { "who": "zeus", "x": 640, "y": 940, "scale": 1.3, "track": [{ "at": 0, "move": "talk-mix", "facing": 0.6 }, { "at": 2.5, "move": "shrug", "facing": 0.6 }] },
+        { "who": "kid", "x": 1280, "y": 940, "scale": 1.3, "track": [{ "at": 0, "move": "listen", "facing": -0.6 }] }
+      ] }
+  ]
+}
 ```
 
-A new track segment blends in from the last one over .25s and takes the short way round when turning. Set `blendIn` on a move to change that (`blendIn: 0` for instant reactions like `get-hit`). A `to` stops where it has got to when the next segment starts, so leave time to arrive. Scenes also take `grade: { color, f }` (or `false`) for the light on characters, and `haze` (default .14) for how far the set recedes.
+- **Characters** are a cast name (`"zeus"`), a cast name with changes (`{ "cast": "boss", "style": "stick", "top": { "color": "#c9213f" } }`), or a new one from options (`{ "seed": 7, "head": "dog", ... }`). Name them once, then actors use `"who"`.
+- **2D** (`"mode": "2d"`): a `set` on a 1920×1080 stage, floor at y 900. Actors have `x`, `y`, `scale`.
+- **3D** (`"mode": "3d"`): a `world` with a `time` of day and `cam` shots. Actors have `pos: [x, z]` in metres. The CLI gives it a GPU; `--gpu soft` if there is none.
+- **Tracks** are what an actor does over time: `{ "at": 2, "move": "wave", "facing": 0.5 }`. Add `"to"` to walk somewhere at the speed the feet move. `"talk-mix"` picks a different talking gesture per line.
+- **Facing:** 0 faces us, 1.57 faces screen right, -1.57 screen left, 3.14 shows the back.
 
-To render your own list, add it to `src/reel.js`, or copy the pattern in `src/preview.js`.
+Every field is in `reference/film.md`. Every name (moves, cast, heads, outfits, hats, sets, worlds, cameras, effects) is in `reference/catalog.md`, or run `inkbone list`.
 
-## Reuse before writing
+## Good films
 
-Most requests are existing things with new options:
+- **Use the cast for main characters**: they have designed shapes and their own walk. Random seeds are for crowds and extras.
+- **One style per scene.** Round and stick mixed in one shot looks like a mistake unless it's the joke.
+- **Hold, then act.** Give a reaction room: a line, a beat of `listen`, then the big move. Leave time for a `to` walk to arrive before the next segment starts.
+- **Two people touching** (handshake, hug, slap, shove, give-take, shoulder-pat, grab-collar, pull-along) is a duet on one actor's track: `{ "at": 1, "duet": "hug", "with": "kid" }`.
+- **Faces read at size.** For close-ups, raise `cam.z` in 2D, or use a nearer camera in 3D.
+- **Caricatures of real people** (einstein, trump, napoleon) are cartoon parody: keep them clearly comic, and never present them as the real person endorsing or saying something.
 
-- **Character:** `createCharacter(seed, overrides)`. Options are in `src/character.js`. Same seed, same character.
-- **Effect:** `palette` (a `PAL` name or your own dark-to-bright list), `seed`, `scale`.
-- **Set:** `theme` recolours, `seed` rearranges.
-- **Move:** `facing` is the body's angle: 0 faces us, 1.57 faces screen right, 3.14 shows the back, negative faces left. Use `overrides` to change any pose field.
+## Changing the engine
 
-## Add a move
-
-One entry in `src/moves/index.js`:
-
-```js
-gulp: { tags: ['comic'], dur: 1.4, keys: [
-  [0, {}],
-  [.2, { crouch: .05, expr: 'scared', shrug: .4 }],             // wind-up
-  [.5, { headPitch: .3, lean: .1, expr: 'deadpan' }, 'back'],   // action, overshoots then settles
-  [1.4, { headPitch: 0, lean: 0, crouch: 0, shrug: 0 }, 'io'],  // recovery
-], cues: [{ t: .5, fx: 'sweat', at: 'head' }], hits: [] },
-```
-
-- Keys only say what changes. Unset fields carry over.
-- Hands `lh`, `rh` are `[out, up, forward]` in arm lengths from the shoulder. Feet `lf`, `rf` are `[out, lift, forward]` in leg lengths. So one pose fits every body.
-- Other fields are `REST` in `src/rig.js`: `curve arch hipTilt shTilt lPitch rPitch yaw lean side bend twist crouch hop shrug sq spin headSq lStretch rStretch lfStretch rfStretch headYaw headPitch headRoll lhShape rhShape expr look talk overL overR`.
-- Hand shapes: `relax open flat fist point thumb peace grip palmup pinch spread`. To make hands meet or reach the body's centre on any build, set `lMid: 1` / `rMid: 1`: `lh`/`rh` then measure from the chest midline, not the shoulder. To touch the face on any body, use `rFace: [out, up, forward]` in head radii with `rFaceW: 1`: the wrist then follows the head, and it goes in front of or behind the head by itself. Set `handed: true` so a one-handed move uses the hand nearest the camera. Fingers follow the forearm unless aimed: `rAim: [out, up, forward]` with `rAimW: 1`. Namaste and clap use both, and clear them on the way out. Eases: `line io in out back snap`.
-- `hits: [{ t, stop, shake, amp }]` freezes everything for `stop` seconds on contact. Anchors for cues: `rh lh head hips feet rf lf chest`.
-- Walks and runs use `cycle` and set `stride`, so scenes can match ground speed. Give a gait `arms: { swing, bend, flex, bias, out }`: the arm swings from the shoulder with the elbow nearly fixed. Setting only hand positions makes the forearm flap while the upper arm stays still. If the body leans, add about that lean to `bias`.
-
-**Every key pose needs a line of action:** use `curve` and `arch` to bend the spine, tilt `hipTilt` against `shTilt`, and never mirror the arms or legs. Check with `node tools/render.mjs move:x --silhouette` and shots with `--grey`: if the pose or the characters don't read there, fix that first.
-
-**For main characters use `CAST` in `src/cast.js`** (designed shapes and a personal `walk`), not random seeds.
-
-**House style is cartoonish, never realistic.** Push every pose past believable. Bodies squash (`sq`), heads stretch (`headSq`), limbs stretch on the hit (`rStretch`), eyes pop (expression `pop`), jaws drop. If a move looks like a person doing it, exaggerate it more.
-
-**What sells it:** a wind-up opposite to the action, a big silhouette change on the release, a freeze on contact, an overshoot, then recovery. Fast in, slow out. Hold a pose rather than drifting. The engine already animates bodies on twos and lags the head and hands by a frame or two.
-
-**Keep the face visible:** raised hands go behind the head by default. Set `overR: 1` or `overL: 1` only when a hand should cover the face. For raised arms, use a big `out` so they don't vanish behind the head.
-
-## Drawing rules, from 2D references
-
-- **Hairline:** forehead, temple corner, sideburn in front of the ear, up over the ear, down to the nape. Hair sits above the skull, never hugging it.
-- **Hair is in `src/hair.js`, shared by all styles:** a cap with a hairline plus pointed tufts rooted on the scalp (`T`, `spike`, `fringe`), merged under one outline. Check with `node tools/hairs.mjs out.png round` and `stick`.
-- **Shoes are in `src/shoes.js`, shared by all styles:** 3D forms built from cross-sections, with panels and laces placed on the surface. Check with `node tools/shoes.mjs out.png`.
-- **Hair mass:** big shapes first. Show form with lighter tapered tufts along the flow. Single strands only add noise, and dark-on-dark strands disappear.
-- **Eyes:** heavy upper lid, light lower. Brows press on the lid.
-- **Mouths:** favour one side, with corner marks on smiles.
-- **Beards:** the cheek line dips toward the mouth and joins the moustache. Lips show through with no ring.
-- **Hands:** square palm, thick fingers with round tips, thumb a wide wedge from low on the palm.
-- **Poses:** check the silhouette. Separate arms and legs from the body, and avoid tube torsos.
-
-- **Outfits:** layers and construction, not decoration. Show two colours where possible (open jacket over inner tee), and add collars, pockets, cuffs, hem bands and fold marks at elbows, knees and waist. Use `node tools/outfits.mjs`. Prints must be original, with no brand logos.
-
-## Sets and light
-
-A set is `SETS[name] = (layer, T, R) => layer(k, ink => ...)`. `k` is how much that layer lags behind the camera (0 = none), so far layers create parallax. Rooms use `room()`, which gives real perspective, and anything on the side walls uses `onLeftWall` / `onRightWall`. Each theme has an entry in `LIGHTS` (light direction, colour, shadow colour) and `GRADES` (how far characters lean toward it). `drawSetLight` adds glows, window shafts and a vignette over the characters.
-
-Cameras: keys glide by default. Scenes slowly push in (`push`, 0 turns it off). Use `scene.shakes` for impact kicks.
-
-## Styles and the 3D stage
-
-Styles switch with `createCharacter(seed, { style: 'stick' })` or `asStyle(spec, 'stick')`. New looks use `registerStyle` and must stay cartoonish. Never copy characters from reference images.
-
-For two people touching, use a duet: `drawDuet(ink, a, b, 'handshake', t, { x, y, scale })`, or `{ at, duet: 'handshake', with: 'theirId' }` on an actor's track. See `src/duets.js`.
-
-For 2D characters in a 3D world, see the README section and `src/stage3d/reel.js` for working scenes. In 3D, `face` and walking direction are world angles, while `facing` stays relative to the camera. Always run `node tools/check3d.mjs`: it warns about blocked or unreadable shots. Worlds are generic: film-specific places and story stay in the film's folder.
-
-## Add an effect
-
-One entry in `FX` in `src/fx/index.js`: `{ tags, dur, loop?, palette, draw(ink, t, o) }`. It must be a pure function of `t`: use `new Rng(seed)` and closed-form motion, never `Math.random` or stored state. One-shots end by `dur`, loops join seamlessly. Draw around (0, 0), the anchor, inside `frame(ink, o, () => { ... })`.
-
-## Drawing
-
-Always draw through `Ink`: `ink.shape`, `ink.line`, `ink.blob`, so line weight, boil and shading stay consistent. `blob` draws round-capped strokes as one merged silhouette, which is what keeps joints clean.
+Adding a move, outfit, hat, head, effect, set or style is code in `src/`: see `reference/extending.md`. After any change run `inkbone check`, regenerate the catalog with `inkbone catalog --out skills/inkbone/reference/catalog.md`, and look at the matching sheet before calling it done.
 
 ## Done means
 
-`node tools/check.mjs` passes, and you opened the render and looked. Say what you checked and what you couldn't. You can see frames but can't judge how motion feels at speed as well as a person can, so ask them to watch the video.
+You validated, rendered, and opened the image or video. Say what you checked and what you couldn't. You can see frames but can't judge how motion feels at speed as well as a person can, so ask them to watch the video.

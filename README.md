@@ -4,6 +4,20 @@ Flat vector cartoon animation in code. Characters have a real 3D skeleton with f
 
 No images, no story, no project-specific content. Use it from anything that can draw on a canvas.
 
+## Make a film
+
+A film is a JSON file: characters, scenes, moves, camera. The `inkbone` command checks it and renders it. See [examples/](examples) and [the film reference](skills/inkbone/reference/film.md).
+
+```bash
+node bin/inkbone.mjs validate examples/kitchen.json   # every name checked, with "did you mean" fixes
+node bin/inkbone.mjs sheet examples/kitchen.json      # frames on one image, beside the film
+node bin/inkbone.mjs render examples/kitchen.json     # examples/kitchen.mp4; --out to put it elsewhere
+node bin/inkbone.mjs look zeus                        # a character at six angles
+node bin/inkbone.mjs list dog                         # search every name
+```
+
+From another project: `npm install git+file:///path/to/inkbone#v0.3.0`, then `npx inkbone ...`. See [install](skills/inkbone/reference/install.md).
+
 ## Run it
 
 ```bash
@@ -20,15 +34,15 @@ Rendering needs Playwright's Chromium, plus ffmpeg for video. Video settings are
 
 | | |
 |---|---|
-| **Cast** | `CAST` in `src/cast.js`: 7 hand-designed characters with their own shapes and walks |
-| **Characters** | `createCharacter(seed, overrides)`: 10 body types, 18 hairstyles, 18 tops, 8 skin tones, faces and accessories |
+| **Cast** | `CAST` in `src/cast.js`: 29 hand-designed characters, from everyday people to famous figures, gods, soldiers and animal-headed characters |
+| **Characters** | `createCharacter(seed, overrides)`: 11 body types, 7 animal heads, 20 hairstyles, 22 tops, 11 hats, faces and accessories |
 | **Moves** | Walks, runs, gestures, emotions, fights, falls, seated, with props |
 | **Expressions** | 19, plus lip-sync through `talk` (0 to 1) |
 | **Effects** | Impacts, smoke, comic marks, fire, explosions, weather, magic. All recolourable |
 | **Sets** | Living room, kitchen, street, rooftop, office, plain. Each takes 9 themes and a seed |
 | **Stage** | Camera moves, shake, transitions, scenes as data |
 
-`node tools/list.mjs` prints everything.
+`node bin/inkbone.mjs list` prints everything, and [the catalog](skills/inkbone/reference/catalog.md) lists it all.
 
 ## Use it
 
@@ -44,9 +58,9 @@ function frame(ctx, t) {
 
 Scenes, adding moves and effects, and the render-look-fix workflow are in [skills/inkbone/SKILL.md](skills/inkbone/SKILL.md).
 
-## Agent skill
+## For agents
 
-Copy `skills/inkbone` to `~/.claude/skills/` to teach Claude Code to use and extend Inkbone.
+The repo is a Claude Code plugin: the skill is in [skills/inkbone](skills/inkbone/SKILL.md), with a film reference, a generated catalog and a guide to extending the engine. Other agents read [AGENTS.md](AGENTS.md). `node tools/check.mjs` fails if the catalog falls behind the code.
 
 ## Styles
 
@@ -81,7 +95,7 @@ node tools/lipsync.mjs voice.wav out.json
 
 ## Versions
 
-Each film should pin an Inkbone version with a git tag, so engine work never changes a finished film. `VERSION` is in `src/version.js`.
+Each film should pin an Inkbone version with a git tag, so engine work never changes a finished film. `VERSION` is in `src/version.js`; releasing is in [install](skills/inkbone/reference/install.md).
 
 ## How it works
 

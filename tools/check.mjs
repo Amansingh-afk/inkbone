@@ -23,5 +23,7 @@ REEL.forEach((sc, si) => sc.actors.forEach((a, ai) => { let was = null; for (let
 } }));
 console.log(`${r.items} items checked at 2 seeds, ${r.chars} random characters walked, ${r.combos.toExponential(2)} character combinations`);
 for (const b of banned) console.log('NOT DETERMINISTIC: uses a clock or Math.random:', b);
+// the agent catalog must list what exists now, or agents won't find new things
+{ const { spawnSync } = await import('node:child_process'), fs = await import('node:fs'), path = await import('node:path'), here = path.dirname(new URL(import.meta.url).pathname), cat = path.join(here, '../skills/inkbone/reference/catalog.md'), now = spawnSync(process.execPath, [path.join(here, '../bin/inkbone.mjs'), 'catalog']).stdout.toString(); if (!fs.existsSync(cat) || fs.readFileSync(cat, 'utf8') !== now) errs.push('skills/inkbone/reference/catalog.md is out of date: run node bin/inkbone.mjs catalog --out skills/inkbone/reference/catalog.md'); }
 for (const b of [...r.bad, ...errs]) console.log('FAIL', b);
 if (banned.length || r.bad.length || errs.length) process.exit(1); console.log('all good');

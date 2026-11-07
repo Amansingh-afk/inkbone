@@ -1,6 +1,6 @@
 {
   "name": "inkbone",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Flat vector character animation engine: 3D skeleton, acting as data, deterministic rendering.",
   "type": "module",
@@ -11,12 +11,27 @@
   },
   "scripts": {
     "serve": "node tools/serve.mjs",
-    "check": "node tools/check.mjs"
-  },
-  "devDependencies": {
-    "playwright-core": "^1.64.1"
+    "check": "node tools/check.mjs",
+    "inkbone": "node bin/inkbone.mjs"
   },
   "optionalDependencies": {
     "three": "^0.170.0"
-  }
+  },
+  "bin": {
+    "inkbone": "bin/inkbone.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.64.1"
+  },
+  "files": [
+    "bin",
+    "src",
+    "tools",
+    "storybook",
+    "skills",
+    "examples",
+    "AGENTS.md",
+    "README.md",
+    ".claude-plugin"
+  ]
 }
