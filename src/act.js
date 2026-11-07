@@ -3,7 +3,7 @@ import { EASE, clamp, lerp, hash, mix } from './core.js';
 import { REST, solve, project as pr, rotY } from './rig.js';
 import { paintSpec } from './styles/index.js';
 import { MOVES } from './moves/index.js';
-import { drawProp, boxProp, bookProp } from './props.js';
+import { drawProp, boxProp, bookProp, TIP } from './props.js';
 import { FX } from './fx/index.js';
 // A scene's light on a character: every colour leans toward the light's colour. Eye whites and the ink line stay put, so faces still read in the dark.
 const graded = new WeakMap();
@@ -67,7 +67,7 @@ export function actingPose(move, t, { facing = .55, overrides = null, from = nul
   return mixPose(a, pose, EASE.io(clamp((Math.floor(t * 12 + 1e-6) + 1) / (d * 12))));
 }
 const spinPt = (p, v) => { if (!p.spin) return v; const a = p.spin * (Math.sin(p.yaw) >= 0 ? -1 : 1), c = Math.cos(a), s = Math.sin(a), x = v[0] - p.x; return [p.x + x * c - v[1] * s, x * s + v[1] * c]; };
-const ANCHOR = { face: s => s.head, rh: s => s.R.h, lh: s => s.L.h, head: s => s.head, hips: s => s.pelvis, rf: s => s.rf.a, lf: s => s.lf.a, chest: s => s.chest };
+const ANCHOR = { face: s => s.head, rh: s => s.R.h, lh: s => s.L.h, head: s => s.head, hips: s => s.pelvis, rf: s => s.rf.a, lf: s => s.lf.a, chest: s => s.chest, tip: s => { const [g, o] = s.p.overR > .5 ? [s.L, s.R] : [s.R, s.L]; return g.h.map((v, i) => v + (o.h[i] - v) * TIP); } };
 export function anchorOf(spec, sk, at) { if (at === 'feet') return [(sk.lf.a[0] + sk.rf.a[0]) / 2, 0]; const v = spinPt(sk.p, pr(ANCHOR[at]?.(sk) ?? sk.pelvis)); const up = at === 'head' ? -spec.body.headH * (sk.p.spin ? .2 : 1.05) : 0; return [v[0], v[1] + up]; }
 
 // One character acting one move at position (x, y) on screen.
@@ -93,6 +93,7 @@ export function drawAct(ink, spec, name, t, { x = 0, y = 0, scale = 1, facing = 
     ink.blob([{ pts: P, r: [R0 * .8, R0 * .68, R0 * .48, R0 * .16] }], col, { lw: 3.2 });
   }
   const hold = {}; if (move.props?.r) hold[isFlipped(move, facing) ? 'l' : 'r'] = (i, h, e, layer) => drawProp(i, move.props.r, h, e, layer, spec, sk, isFlipped(move, facing) ? 1 : -1);
+  if (move.props?.l) hold[isFlipped(move, facing) ? 'r' : 'l'] = (i, h, e, layer) => drawProp(i, move.props.l, h, e, layer, spec, sk, isFlipped(move, facing) ? -1 : 1);
   if (move.props?.book) hold.front = i => bookProp(i, sk, spec);
   if (move.props?.box) hold.r = (i, h, e, layer) => { if (layer === 'behind') boxProp(i, sk, spec); };
   paintSpec(ink, spec, sk, { t: clock, swing, hold });

@@ -3,7 +3,8 @@ import { Ink } from './core.js';
 import { createCharacter } from './character.js';
 import { MOVES } from './moves/index.js';
 import { FX } from './fx/index.js';
-import { drawAct, totalDur } from './act.js';
+import { drawAct, totalDur, seatHeight } from './act.js';
+import { FREE_PROPS } from './props.js';
 import { drawSet, drawSetLight, FLOOR } from './sets.js';
 import { drawReel, reelDuration } from './scene.js';
 import { REEL } from './reel.js';
@@ -21,7 +22,7 @@ export function makePreview({ what, seed = 3, facing = null, theme = 'warm', pal
   if (kind === 'lineup') return { dur: 2, draw(c, t) { c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = bg; c.fillRect(0, 0, W, H); const ink = new Ink(c, { t: 1 }), S = H / 760; castNames.forEach((n, i) => { const q = opts.style ? asStyle(CAST[n], opts.style) : CAST[n]; drawAct(ink, q, 'idle', 1, { x: W * (i + .5) / castNames.length, y: H * .96, scale: S, facing: .5, shadow: false }); }); } };
   if (kind === 'move') {
     const s = spec(), m = MOVES[name]; if (!m) throw new Error('no move ' + name);
-    return { dur: m.loop ? m.dur : totalDur(name) + .35, draw(c, t) { c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = bg; c.fillRect(0, 0, W, H); const ink = new Ink(c, { t }); const S = scale ?? H / 660; c.fillStyle = 'rgba(40,24,60,.07)'; c.fillRect(0, H * .9, W, H * .1); drawAct(ink, s, name, t, { x: W / 2 + (m.tags.includes('comic') ? 0 : 0), y: H * .94, scale: S, facing: facing ?? .6 }); } };
+    return { dur: m.loop ? m.dur : totalDur(name) + .35, draw(c, t) { c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = bg; c.fillRect(0, 0, W, H); const ink = new Ink(c, { t }); const S = scale ?? H / 660; c.fillStyle = 'rgba(40,24,60,.07)'; c.fillRect(0, H * .9, W, H * .1); if (m.tags.includes('seated') && !m.tags.includes('contact')) FREE_PROPS.chair(ink, W / 2 - 14 * S, H * .94, S * seatHeight(s) / 128); drawAct(ink, s, name, t, { x: W / 2 + (m.tags.includes('comic') ? 0 : 0), y: H * .94, scale: S, facing: facing ?? .6 }); } };
   }
   if (kind === 'fx') {
     const f = FX[name]; if (!f) throw new Error('no effect ' + name); const full = !!f.full;
