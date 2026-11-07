@@ -4,7 +4,7 @@ Inkbone is private. Projects depend on a tagged version of this repo, so engine 
 
 ```bash
 # in the project folder
-npm install git+file:///home/ricky/realm/sidechicks/cartoons/inkbone#v0.3.1
+npm install git+file:///home/ricky/realm/sidechicks/cartoons/inkbone#v0.3.2
 npx playwright-core install chromium      # once per machine, if missing
 npx inkbone list                          # works from the project
 npx inkbone render film.json
@@ -14,7 +14,7 @@ Code can also import it: `import { createCharacter, CAST } from 'inkbone'`, and 
 
 ## Updating a project
 
-Change the tag in the project's `package.json` (`#v0.3.1` to the new one) and run `npm install`. Render a still of a scene you know before and after, and compare.
+Change the tag in the project's `package.json` (`#v0.3.2` to the new one) and run `npm install`. Render a still of a scene you know before and after, and compare.
 
 ## Releasing a version
 

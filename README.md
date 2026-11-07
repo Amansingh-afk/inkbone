@@ -16,7 +16,7 @@ node bin/inkbone.mjs look zeus                        # a character at six angle
 node bin/inkbone.mjs list dog                         # search every name
 ```
 
-From another project: `npm install git+file:///path/to/inkbone#v0.3.1`, then `npx inkbone ...`. See [install](skills/inkbone/reference/install.md).
+From another project: `npm install git+file:///path/to/inkbone#v0.3.2`, then `npx inkbone ...`. See [install](skills/inkbone/reference/install.md).
 
 ## Run it
 
