@@ -20,7 +20,7 @@ Rendering needs Playwright's Chromium, plus ffmpeg for video. Video settings are
 | | |
 |---|---|
 | **Cast** | `CAST` in `src/cast.js`: 7 hand-designed characters with their own shapes and walks |
-| **Characters** | `createCharacter(seed, overrides)`: 7 body types, 13 hairstyles, 9 outfits, 8 skin tones, faces and accessories |
+| **Characters** | `createCharacter(seed, overrides)`: 10 body types, 18 hairstyles, 18 tops, 8 skin tones, faces and accessories |
 | **Moves** | Walks, runs, gestures, emotions, fights, falls, seated, with props |
 | **Expressions** | 19, plus lip-sync through `talk` (0 to 1) |
 | **Effects** | Impacts, smoke, comic marks, fire, explosions, weather, magic. All recolourable |

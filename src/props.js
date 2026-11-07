@@ -12,13 +12,14 @@ export function drawProp(ink, name, h, e, layer, spec, sk, side = -1) {
   if (name === 'clipboard') { const q = k; ink.push(px, py - r * .2, q, 1, -.12); ink.shape([[-30, -42], [30, -42], [30, 42], [-30, 42]], { fill: '#8a6242', lw: 3.8, hard: true }); ink.shape([[-24, -32], [24, -32], [24, 36], [-24, 36]], { fill: '#f7f1e5', lw: 2.4, hard: true }); ink.shape([[-12, -48], [12, -48], [12, -36], [-12, -36]], { fill: '#6d7a8a', lw: 2.6, hard: true }); for (let i = 0; i < 4; i++) ink.line([[-17, -20 + i * 13], [15 - (i % 2) * 12, -20 + i * 13]], { lw: 2.2, color: '#8c8478', hard: true, even: 1 }); ink.pop(); }
   if (name === 'stamp') { ink.push(px, py, k, 1, a - Math.PI / 2); ink.shape([[-6, -2], [6, -2], [6, 26], [-6, 26]], { fill: '#6b4029', lw: 3, hard: true }); ink.ell(0, -6, 11, 9, { fill: '#8a6242', lw: 3 }); ink.shape([[-20, 26], [20, 26], [20, 38], [-20, 38]], { fill: '#39394a', lw: 3.2, hard: true }); ink.shape([[-18, 38], [18, 38], [18, 43], [-18, 43]], { fill: '#c9213f', lw: 2.2, hard: true }); ink.pop(); }
   if (name === 'cutter') { ink.push(px, py, k, 1, a - Math.PI / 2); ink.shape([[-8, -14], [8, -14], [7, 22], [-7, 22]], { fill: '#c9213f', lw: 3.2 }); ink.shape([[-3, 22], [3, 22], [3, 62], [-3, 62]], { fill: '#b7b5bc', lw: 2.6, hard: true }); ink.line([[3, 62], [26, 72]], { lw: 7 }); ink.line([[3, 62], [26, 72]], { lw: 3.4, color: '#b7b5bc' }); ink.line([[-6, -12], [-30, -46], [-60, -30]], { lw: 3.4 }); ink.pop(); }
-  if (name === 'mug') {
-    const qx = h[0] + cos(a) * r * 2.15, qy = h[1] + sin(a) * r * 2.15, hd = pr(sk.head), toward = Math.sign(hd[0] - qx) || 1, tilt = (sk.p.mugTilt ?? 0) * toward, col = '#f2ece0', side = Math.sign(h[0] - qx) || -1; ink.push(qx, qy, k, 1, tilt);
-    ink.ell(side * 23, -1, 12, 14, { fill: col, lw: 4 }); ink.ell(side * 23, -1, 5, 7, { fill: '#7b6a5e', lw: 2.4 });
-    ink.shape([[-19, -24], [19, -24], [17, 22], [-17, 22]], { fill: col, shade: darken(col, .2), shadeBy: 5, lw: 4 });
-    ink.shape(ellipse(0, -24, 19, 5.5), { fill: '#a0663a', lw: 3 });
-    ink.line([[-17, 2], [17, 2]], { lw: 5, color: '#d95f43', even: 1 });
-    if (Math.abs(tilt) < .08) for (const q of [-6, 7]) { const w = Math.sin(ink.t * 3 + q) * 3; ink.line([[q, -33], [q + w + 3, -44], [q - w, -55]], { lw: 3.4, color: 'rgba(255,255,255,.75)', even: 1 }); }
+  if (name === 'mug') { // the hand holds the handle's outer edge, so the loop shows above and below the fingers
+    const qx = h[0] + cos(a) * r * 2.4, qy = h[1] + sin(a) * r * 2.4, hd = pr(sk.head), toward = Math.sign(hd[0] - qx) || 1, tilt = (sk.p.mugTilt ?? 0) * toward, col = '#f7f1e5', tea = '#9a5b2e', side = Math.sign(h[0] - qx) || -1; ink.push(qx, qy, k, 1, tilt);
+    const loop = [[side * 18, -17], [side * 38, -21], [side * 41, 7], [side * 17, 13]]; ink.line(loop, { lw: 11.5, even: 1 }); ink.line(loop, { lw: 6, color: col, even: 1 });
+    const body = [[-20, -26], [20, -26]]; for (let i = 0; i <= 12; i++) { const f = i / 12 * Math.PI; body.push([cos(f) * 18, 16 + sin(f) * 8]); }
+    ink.shape(body, { fill: col, shade: darken(col, .18), shadeBy: 5, lw: 4, hard: true });
+    ink.line([[-19.4, -7], [0, -3], [19.2, -7]], { lw: 5, color: '#d95f43', even: 1 }); ink.line([[-13, -17], [-13.4, -11]], { lw: 3, color: '#fffdf6', even: 1 });
+    ink.shape(ellipse(0, -26, 20, 6), { fill: col, lw: 3.4 }); ink.shape(ellipse(0, -25.6, 15.5, 3.8), { fill: tea, lw: 2.2 }); ink.line([[-8, -26.4], [-2, -27]], { lw: 1.8, color: lighten(tea, .35), even: 1 });
+    if (Math.abs(tilt) < .08) for (const q of [-6, 7]) { const w = Math.sin(ink.t * 3 + q) * 3; ink.line([[q, -35], [q + w + 3, -46], [q - w, -57]], { lw: 3.4, color: 'rgba(255,255,255,.8)', even: 1 }); }
     ink.pop();
   }
 }

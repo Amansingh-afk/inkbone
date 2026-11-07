@@ -1,0 +1,7 @@
+// Every hairstyle at five angles.
+import { Ink, createCharacter, solve, paintSpec, HAIR_NAMES } from '/src/index.js';
+const COL = ['#221d2e', '#5c3a26', '#2f9e50', '#3a86d8', '#c98b3a', '#e0772a', '#221d2e', '#8a5a2c'];
+export function draw(c, W, H, style) { c.fillStyle = '#efe6d6'; c.fillRect(0, 0, W, H);
+  const names = HAIR_NAMES.filter(n => n !== 'bald'), yaws = [0, .6, 1.5, -.9, 3.14], cols = 10, cw = W / cols, rows = Math.ceil(names.length / 2), ch = H / rows;
+  names.forEach((name, n) => yaws.forEach((yaw, i) => { const spec = createCharacter(9, { bodyType: 'average', skin: style === 'stick' ? '#fbfaf6' : '#d8976a', acc: [], ...(style === 'stick' ? { style } : {}), hair: { style: name, color: name === 'hijab' ? '#cdb8a4' : COL[n % COL.length] }, top: { type: 'tee', color: '#39394a', accent: '#f4c542' }, face: { jaw: 'round', nose: 'button', eyes: 'round', facial: 'none', browW: 1 } }), sk = solve(spec, { yaw, expr: 'neutral' }), S = ch / 470, X = ((n % 2) * 5 + i + .5) * cw, Y = (Math.floor(n / 2) + .4) * ch, ink = new Ink(c, { t: 1.15, boil: 0 }); c.save(); c.beginPath(); c.rect(X - cw / 2, Math.floor(n / 2) * ch, cw, ch); c.clip(); ink.push(X - sk.head[0] * S, Y + sk.head[1] * S, S); paintSpec(ink, spec, sk, { t: 1.15 }); ink.pop(); c.restore(); if (!i) { c.fillStyle = '#221733'; c.font = '700 15px sans-serif'; c.fillText(name, X - cw / 2 + 4, Math.floor(n / 2) * ch + 16); } }));
+}

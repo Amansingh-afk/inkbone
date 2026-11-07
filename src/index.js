@@ -14,3 +14,4 @@ export * from './cast.js';
 export * from './styles/index.js';
 export * from './version.js';
 export * from './hats.js';
+export { HAIR, HAIR_NAMES } from './hair.js';

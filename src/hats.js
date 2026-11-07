@@ -3,7 +3,8 @@
 import { TAU, darken, lighten, mix } from './core.js';
 import { rotX, rotY } from './rig.js';
 const { sin, cos, atan2, abs, PI } = Math;
-export const HATS = ['cap', 'hardhat', 'turban', 'fedora', 'crown'];
+export const HATS = ['cap', 'capback', 'hardhat', 'fedora', 'crown'];
+const max0 = v => Math.max(0, v);
 const LOOK_DOWN = .17; // brims are seen from slightly above, or they'd be a flat line
 function kit(R, H, hy, pitch) {
   const P = (x, y, z) => { const v = rotY(rotX([x, y, z], pitch), hy); return [v[0], -v[1] + v[2] * LOOK_DOWN, v[2]]; }, S = (lon, lat, rad = 1) => P(sin(lon) * cos(lat) * R * rad, sin(lat) * H * rad, cos(lon) * cos(lat) * R * rad);
@@ -15,28 +16,27 @@ function kit(R, H, hy, pitch) {
   const lip = (lat, r0, n = 40, drop = 0) => { const o = [], y = sin(lat) * H * r0.y; for (let i = 0; i < n; i++) { const lon = i / n * TAU - hy; o.push(P(sin(lon) * R * r0.x, y - drop * (cos(lon) * .5 + .5), cos(lon) * R * r0.x)); } return o; };
   return { P, S, arc, crown, lip };
 }
-export function drawHat(ink, kind, { R, H, hy, pitch = 0, color, band, lift = 0 }) {
+export function drawHat(ink, kind, { R, H, hy, pitch = 0, color, band, lift = 0, skin = '#d8976a' }) {
+  const spec_skin = () => skin;
   const K = kit(R, H, hy, pitch), facing = cos(hy), lat = .64 + lift, xy = q => [q[0], q[1]], line = (pts, lw, c) => ink.line(pts.map(xy), { lw, color: c }), shape = (pts, o) => ink.shape(pts.map(xy), o);
-  if (kind === 'cap') {
-    const c = color ?? '#e8574f', dk = darken(c, .22), y = sin(lat) * H * 1.07, brimPts = () => { const inner = [], outer = [], n = 14, span = 1.18; for (let i = 0; i <= n; i++) { const a = -span + 2 * span * i / n; inner.push(K.P(sin(a) * R * 1.05, y + H * .01, cos(a) * R * 1.05)); const reach = 1.05 + .66 * cos(a * .9) ** .7, w = sin(a) * R * (1.05 - .1 * cos(a)); outer.push(K.P(w, y - R * .17 * cos(a * .8), cos(a) * R * reach)); } return [...inner, ...outer.reverse()]; }, drawBrim = () => { const q = brimPts(); shape(q, { fill: dk, lw: 4.2 }); };
-    if (facing < .05) drawBrim();
-    const cr = K.crown(lat, 1.09, 1.03); shape(cr, { fill: c, shade: dk, shadeBy: 7, lw: 4.6 });
-    for (const m of [-.9, .9, 0]) { const pts = []; for (let i = 0; i <= 6; i++) { const q = K.S(m - hy * 0, lat + (1.5 - lat) * i / 6, 1.09); if (q[2] > -R * .15) pts.push(q); } if (pts.length > 2) line(pts, 2.4, dk); } const b0 = K.S(0, 1.5, 1.09); ink.ell(b0[0], b0[1], R * .07, R * .05, { fill: dk, lw: 2.4 });
-    if (facing >= .05) drawBrim();
+  if (kind === 'cap' || kind === 'capback') { // a big soft dome that sits low on the head, panel seams, a top button, and a long curved brim
+    const c = color ?? '#e8574f', dk = darken(c, .2), back = kind === 'capback', l0 = lat - .1, y = sin(l0) * H * 1.1, sg = back ? -1 : 1, B = (x, yy, z) => { const v = rotY(rotX([x * sg, yy, z * sg], pitch), hy); return [v[0], -v[1] + v[2] * .08, v[2]]; }, F = K.P, slope = R * (.05 + .17 * abs(sin(hy))), brim = () => { const inner = [], outer = [], n = 18, span = 1.2; for (let i = 0; i <= n; i++) { const a = -span + 2 * span * i / n, ca = cos(a); inner.push(B(sin(a) * R * 1.09, y + H * .02, ca * R * 1.09)); const reach = 1.1 + .96 * ca ** 1.6, w0 = sin(a) * R * (1.16 - .12 * ca); outer.push(B(w0, y - slope * ca - R * .1 * (1 - ca), ca * R * reach)); } const q = [...inner, ...outer.reverse()]; ink.shape(q.map(p => [p[0], p[1] + R * .05]).map(xy), { fill: darken(c, .38), lw: 4.8 }); shape(q, { fill: dk, lw: 4.8 }); const a0 = [], n2 = 8; for (let i = 0; i <= n2; i++) { const a = -.6 + 1.2 * i / n2, ca = cos(a); a0.push(B(sin(a) * R * 1.06, y - slope * ca * .8, ca * R * (1.1 + .74 * ca ** 1.6))); } line(a0, 2.4, darken(c, .36)); }, frontOn = (back ? -facing : facing) >= .05;
+    if (!frontOn) brim();
+    const cr = K.crown(l0, 1.14, 1.16); shape(cr, { fill: c, shade: dk, shadeBy: 8, lw: 5 });
+    for (const m of [-1.05, 1.05, 0]) { const pts = []; for (let i = 0; i <= 7; i++) { const q = K.S(m + (back ? PI : 0), l0 + .03 + (1.48 - l0) * i / 7, 1.14); if (q[2] > -R * .1) pts.push(q); } if (pts.length > 2) line(pts, 2.6, dk); }
+    const top = K.S(0, 1.5, 1.14), tw = H * .03; ink.ell(top[0], top[1] - tw, R * .09, R * .06, { fill: dk, lw: 2.8 });
+    if (back && facing > .2) { const g = []; for (let i = 0; i <= 10; i++) { const a = -.42 + .84 * i / 10, u = i / 10; g.push(K.S(a, l0 + .02 + sin(u * PI) * .3, 1.145)); } ink.shape(g.map(xy), { fill: spec_skin(), lw: 3.4 }); const s0 = K.S(-.46, l0 + .05, 1.15), s1 = K.S(.46, l0 + .05, 1.15); ink.line([xy(s0), xy(s1)], { lw: 6, color: dk, hard: true, even: 1 }); }
+    if (frontOn) brim();
   } else if (kind === 'hardhat') { // round dome, a thin lip, a short peak in front, one raised ridge over the top
     const c = color ?? '#f4c542', dk = darken(c, .2), lt = lighten(c, .22), ring = cos(lat) * 1.14, y = sin(lat) * H * 1.14, flat = (r, n = 40) => { const o = []; for (let i = 0; i < n; i++) { const lon = i / n * TAU; o.push(K.P(sin(lon) * R * r, y - H * .01, cos(lon) * R * r)); } return o; }, peak = () => { const inner = [], outer = [], n = 12, span = 1.15; for (let i = 0; i <= n; i++) { const a = -span + 2 * span * i / n; inner.push(K.P(sin(a) * R * ring, y, cos(a) * R * ring)); outer.push(K.P(sin(a) * R * (ring + .03), y - R * .05 * cos(a), cos(a) * R * (ring + .05 + .36 * cos(a * 1.1) ** 1.3))); } shape([...inner, ...outer.reverse()], { fill: dk, lw: 3.8 }); };
     shape(flat(ring + .1), { fill: dk, lw: 3.8 }); if (facing < .05) peak();
     shape(K.crown(lat, 1.14, 1.1), { fill: c, shade: dk, shadeBy: 8, lw: 4.8 });
     const L = [], Rr = [], w = R * .09; for (let i = 0; i <= 12; i++) { const q = lat + .05 + (PI - 2 * lat - .1) * i / 12, n = rotY(rotX([0, sin(q), cos(q)], pitch), hy); if (n[2] < .02) continue; const yy = sin(q) * H * 1.25, zz = cos(q) * R * 1.15; L.push(K.P(-w, yy, zz)); Rr.push(K.P(w, yy, zz)); } if (L.length > 2 && abs(sin(hy)) < .85) shape([...L, ...Rr.reverse()], { fill: lt, lw: 2.8 });
     if (facing >= .05) peak();
-  } else if (kind === 'turban') { // a pagri: wide cloth bands wrapped on a slant, meeting at a fold in front
-    const c = color ?? '#e8574f', dk = darken(c, .28), lt = lighten(c, .15), L0 = lat - .12, norm = lon => atan2(sin(lon), cos(lon)), base = K.crown(L0, 1.3, .86).map((q, i) => { if (i < 25) return q; const k = 1 + .012 * sin(i * 1.4); return [q[0] * k, q[1] * k, q[2]]; }), path = ink.shape(base.map(xy), { fill: c, shade: darken(c, .18), shadeBy: 8, lw: 5 }), C = ink.ctx; C.save(); C.clip(path);
-    const tilt = lon => .34 * sin(norm(lon) * .5 + .3); for (const [k, col] of [[.38, lt], [-.06, lt]]) { const A = K.arc(L0 + k, 1.33 - abs(k) * .1, 26, tilt), B = K.arc(L0 + k + .22, 1.33 - abs(k + .22) * .1, 26, tilt).reverse(); ink.shape([...A, ...B].map(xy), { fill: col, stroke: false }); } for (const k of [-.06, .16, .38, .6]) ink.line(K.arc(L0 + k, 1.33 - abs(k) * .1, 26, tilt).map(xy), { lw: 3.4, color: dk, even: 1 }); C.restore();
-    if (facing > .2) { const a = K.S(-.08, L0 + .03, 1.31), b = K.S(.42, L0 + .52, 1.3), d = K.S(-.42, L0 + .62, 1.28); ink.shape([d, a, b].map(xy), { fill: c, shade: lt, shadeBy: 3, lw: 3.4, hard: true }); }
-  } else if (kind === 'fedora') {
-    const c = color ?? '#6b4029', dk = darken(c, .28), drop = R * .1; shape(K.lip(lat + .02, { x: 1.34, y: 1.08 }, 40, drop), { fill: c, shade: dk, shadeBy: 6, lw: 4.6 });
-    shape(K.crown(lat + .06, .94, 1.42), { fill: c, shade: dk, shadeBy: 7, lw: 4.6 }); ink.line(K.arc(lat + .06, .95).map(xy), { lw: R * .15, color: band ?? '#221733', even: 1 });
-    if (facing > -.2) { const a = K.S(0, 1.2, 1.02); line([[a[0] - R * .28, a[1] - H * .17], [a[0], a[1] - H * .08], [a[0] + R * .28, a[1] - H * .17]], 3, dk); }
+  } else if (kind === 'fedora') { // a wide brim dipping in front and curling up at the sides, a tall pinched crown, a dark band
+    const c = color ?? '#6b4029', dk = darken(c, .28), y0 = sin(lat + .02) * H * 1.08, ring = []; for (let i = 0; i < 44; i++) { const lon = i / 44 * TAU, wd = sin(lon) ** 2, r0 = 1.56 + .1 * wd; ring.push(K.P(sin(lon) * R * r0, y0 - R * .15 * max0(cos(lon)) + R * .13 * wd, cos(lon) * R * (r0 - .12))); } shape(ring, { fill: c, shade: dk, shadeBy: 7, lw: 5 });
+    const l1 = lat + .06, rad = .98, cr = K.crown(l1, rad, 1.44); const dent = cr.map((q, i) => (i > 24 ? [q[0] * (1 - .05 * sin((i - 24) / 22 * PI)), q[1] + H * .1 * sin((i - 24) / 22 * PI) ** 4, q[2]] : q)); shape(dent, { fill: c, shade: dk, shadeBy: 8, lw: 5 }); ink.line(K.arc(l1 + .02, rad + .005).map(xy), { lw: R * .17, color: band ?? '#221733', even: 1 });
+    if (facing > -.2) { const a = K.S(0, 1.1, rad); line([[a[0] - R * .3, a[1] - H * .2], [a[0], a[1] - H * .08], [a[0] + R * .3, a[1] - H * .2]], 3.2, dk); }
   } else if (kind === 'crown') {
     const c = color ?? '#e5b43a', n = 12, pts = []; for (let i = 0; i <= n; i++) { const f = -PI / 2 + PI * i / n, lon = f - hy, q = K.S(lon, lat + .14, .96); pts.push([q[0], q[1] - (i % 2 ? 0 : H * .34)]); } const base = K.arc(lat + .14, .96, 12).map(xy).reverse().map(q => [q[0], q[1] + H * .06]); ink.shape([...pts, ...base], { fill: c, shade: darken(c, .2), shadeBy: 4, lw: 4, hard: true });
   }

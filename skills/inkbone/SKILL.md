@@ -94,6 +94,8 @@ gulp: { tags: ['comic'], dur: 1.4, keys: [
 ## Drawing rules, from 2D references
 
 - **Hairline:** forehead, temple corner, sideburn in front of the ear, up over the ear, down to the nape. Hair sits above the skull, never hugging it.
+- **Hair is in `src/hair.js`, shared by all styles:** a cap with a hairline plus pointed tufts rooted on the scalp (`T`, `spike`, `fringe`), merged under one outline. Check with `node tools/hairs.mjs out.png round` and `stick`.
+- **Shoes are in `src/shoes.js`, shared by all styles:** 3D forms built from cross-sections, with panels and laces placed on the surface. Check with `node tools/shoes.mjs out.png`.
 - **Hair mass:** big shapes first. Show form with lighter tapered tufts along the flow. Single strands only add noise, and dark-on-dark strands disappear.
 - **Eyes:** heavy upper lid, light lower. Brows press on the lid.
 - **Mouths:** favour one side, with corner marks on smiles.

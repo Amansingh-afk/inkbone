@@ -1,0 +1,4 @@
+// node tools/hairs.mjs out.png [round|stick] : every hairstyle at five angles. Look at this after any change to hair.
+import { serve, browser, savePng } from './lib.mjs'; import path from 'node:path';
+const [out = 'records/hairs.png', style = 'round'] = process.argv.slice(2); const { server, url } = await serve(); const br = await browser(); const p = await br.newPage(); p.on('pageerror', e => { console.error('PAGE ERROR', e.message); process.exitCode = 1; }); await p.goto(url + '/tools/blank.html');
+const b = await p.evaluate(async style => { const m = await import('/tools/_hairs.js'); const c = document.createElement('canvas'); c.width = 2000; c.height = 2000; m.draw(c.getContext('2d'), 2000, 2000, style); return c.toDataURL('image/png').split(',')[1]; }, style); savePng(path.resolve(out), b); await br.close(); server.close();

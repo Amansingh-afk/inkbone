@@ -15,15 +15,15 @@ export const BODIES = {
 export const SKINS = ['#fbd9bc', '#f3c49c', '#e6ad80', '#d8976a', '#c58355', '#a96c42', '#8a5535', '#6b4029'];
 export const HAIR_COLORS = ['#1e1a2b', '#3a2a2a', '#5c3a26', '#8a5a2c', '#c98b3a', '#e8c66a', '#b7b4bd', '#e9e6ea', '#b84a2e', '#3d6fd0', '#d3589c'];
 export const CLOTH = ['#6f9fd0', '#3f5f8f', '#e8574f', '#f08a3c', '#f4c542', '#7cb342', '#2f9e8f', '#3a86d8', '#5a5fd0', '#9256c9', '#d9568f', '#f2ece0', '#39394a', '#6d7a8a', '#8a6242', '#c7a77a', '#1f6f5c', '#a0303f', '#5c7a3a', '#274a7a'];
-export const HAIRSTYLES = ['crop', 'sidepart', 'quiff', 'curly', 'spiky', 'bob', 'long', 'ponytail', 'bun', 'combover', 'bald', 'afro', 'braid'];
+export const HAIRSTYLES = ['crop', 'messy', 'spiky', 'swept', 'slick', 'sidepart', 'quiff', 'curly', 'afro', 'combover', 'bald', 'long', 'bob', 'ponytail', 'bun', 'braid', 'pigtails'];
 export const TOPS = ['tee', 'graphic', 'stripes', 'shirt', 'hoodie', 'sweater', 'jacket', 'bomber', 'puffer', 'kurta', 'nehru', 'blazer', 'vest', 'labcoat', 'dress', 'sari', 'uniform', 'hivis'];
 export const BOTTOMS = ['pants', 'jeans', 'joggers', 'cargo', 'wide', 'dhoti', 'shorts', 'skirt'];
-export const SHOES = ['sneaker', 'hightop', 'chunky', 'boot', 'sandal', 'formal'];
+export const SHOES = ['sneaker', 'hightop', 'chunky', 'slipon', 'boot', 'sandal', 'slide', 'formal'];
 export const JAWS = ['round', 'square', 'long', 'heart', 'wide', 'egg', 'block', 'pear', 'bean'];
 export const NOSES = ['button', 'long', 'big', 'pointy'];
 export const EYES = ['round', 'small', 'wide', 'tired'];
 export const FACIALS = ['none', 'none', 'none', 'stubble', 'moustache', 'beard', 'goatee'];
-export const ACCESSORIES = ['glasses', 'shades', 'cap', 'earrings', 'bindi', 'scarf', 'tie', 'watch', 'hardhat', 'turban'];
+export const ACCESSORIES = ['glasses', 'shades', 'cap', 'earrings', 'bindi', 'scarf', 'tie', 'watch', 'hardhat', 'capback', 'lanyard'];
 export function comboCount() { return Object.keys(BODIES).length * SKINS.length * HAIRSTYLES.length * HAIR_COLORS.length * TOPS.length * CLOTH.length * BOTTOMS.length * CLOTH.length * SHOES.length * JAWS.length * NOSES.length * EYES.length * 4 * 2 ** ACCESSORIES.length; }
 
 export const STYLE_MAKERS = {}; // filled by src/styles
@@ -49,13 +49,10 @@ export function createCharacter(seed = 1, o = {}) {
     shoes: { type: R.pick(SHOES), accent: R.pick(CLOTH), color: R.pick(['#f2ece0', '#39394a', '#8a6242', '#e8574f', '#3a86d8', '#2c2c3a']), ...o.shoes },
     acc: o.acc ?? ACCESSORIES.filter(() => R.next() < .13),
   };
-  if (spec.face.facial !== 'none' && !o.face?.facial && ['bob', 'long', 'ponytail', 'bun', 'braid'].includes(hair.style)) spec.face.facial = 'none';
+  if (spec.face.facial !== 'none' && !o.face?.facial && ['bob', 'long', 'ponytail', 'bun', 'braid', 'pigtails', 'hijab'].includes(hair.style)) spec.face.facial = 'none';
   // Things that can't be worn together.
-  if (spec.acc.includes('cap') && ['afro', 'bun', 'quiff', 'spiky'].includes(hair.style)) spec.acc = spec.acc.filter(a => a !== 'cap');
   if (spec.acc.includes('glasses') && spec.acc.includes('shades')) spec.acc = spec.acc.filter(a => a !== 'glasses');
-  if (spec.acc.includes('hardhat') && spec.acc.includes('turban')) spec.acc = spec.acc.filter(a => a !== 'turban');
-  if (spec.acc.includes('cap') && (spec.acc.includes('hardhat') || spec.acc.includes('turban'))) spec.acc = spec.acc.filter(a => a !== 'cap');
-  if (['hardhat', 'turban'].some(a => spec.acc.includes(a)) && ['afro', 'bun', 'quiff', 'spiky', 'long'].includes(hair.style)) spec.hair.style = 'crop';
+  { const hats = ['cap', 'capback', 'hardhat', 'fedora', 'crown'].filter(a => spec.acc.includes(a)); if (hats.length > 1) spec.acc = spec.acc.filter(a => !hats.slice(1).includes(a)); if (hair.style === 'hijab' || hair.style === 'afro') spec.acc = spec.acc.filter(a => !hats.includes(a)); }
   if (o.style && STYLE_MAKERS[o.style]) STYLE_MAKERS[o.style](spec, o); else if (o.style) spec.style = o.style;
   return spec;
 }

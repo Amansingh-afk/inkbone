@@ -1,0 +1,4 @@
+// node tools/big.mjs out.png 'name move t facing' ... : cast members large, side by side, for checking clothes.
+import { serve, browser, savePng } from './lib.mjs'; import path from 'node:path';
+const [out, ...sp] = process.argv.slice(2), list = sp.map(q => { const [n, m, t, f] = q.split(' '); return [n, m, +t, +f]; }); const { server, url } = await serve(); const br = await browser(); const p = await br.newPage(); p.on('pageerror', e => { console.error('PAGE ERROR', e.message); process.exitCode = 1; }); await p.goto(url + '/tools/blank.html');
+const b = await p.evaluate(async list => { const m = await import('/tools/_big.js'); const c = document.createElement('canvas'); c.width = 1920; c.height = 1200; m.draw(c.getContext('2d'), 1920, 1200, list); return c.toDataURL('image/png').split(',')[1]; }, list); savePng(path.resolve(out), b); await br.close(); server.close();
