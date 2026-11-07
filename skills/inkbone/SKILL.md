@@ -22,6 +22,7 @@ node tools/render.mjs move:wave --mp4        # video
 node tools/render.mjs reel --still 17.5      # one full-size frame
 node tools/sheet.mjs records/a.png '["punch","get-hit"]' 12 1.2   # moves in even steps, the best view of motion
 node tools/check.mjs                         # errors, determinism, and random characters
+node tools/audit.mjs                         # pose faults in every move, from rig numbers
 node tools/serve.mjs                         # storybook on http://127.0.0.1:8766
 ```
 

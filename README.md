@@ -11,6 +11,7 @@ npm install
 node tools/serve.mjs                  # storybook at http://127.0.0.1:8766
 node tools/render.mjs reel --mp4      # showreel at records/reel/out.mp4
 node tools/check.mjs                  # errors, determinism, random characters
+node tools/audit.mjs                  # pose faults in every move, from rig numbers
 ```
 
 Rendering needs Playwright's Chromium, plus ffmpeg for video. Video settings are in `tools/encode.mjs`: they keep soft gradients from breaking into bands.

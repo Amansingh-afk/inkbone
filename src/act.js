@@ -22,7 +22,9 @@ const BLEND = .25; // seconds a new move takes to take over from the last one. S
 const mixVal = (a, b, f) => Array.isArray(a) ? a.map((v, i) => lerp(v, b[i], f)) : typeof a === 'number' ? lerp(a, b, f) : (f < .5 ? a : b);
 
 // Hands swing on an arc around the shoulder: blend the direction, then restore the reach, instead of cutting straight through.
-const arcVal = (a, b, f) => { const m = a.map((v, i) => lerp(v, b[i], f)), la = Math.hypot(...a), lb = Math.hypot(...b), lm = Math.hypot(...m), want = lerp(la, lb, f); return lm > .05 ? m.map(v => v * want / lm) : m; };
+const unit = v => { const l = Math.hypot(...v) || 1; return v.map(x => x / l); };
+const turnTo = (u, v, f) => { const w = Math.acos(clamp(u[0] * v[0] + u[1] * v[1] + u[2] * v[2], -1, 1)); if (w < 1e-3) return u; const s = Math.sin(w), A = Math.sin((1 - f) * w) / s, B = Math.sin(f * w) / s; return u.map((x, i) => x * A + v[i] * B); };
+const arcVal = (a, b, f) => { const la = Math.hypot(...a), lb = Math.hypot(...b); if (la < .05 || lb < .05) return a.map((v, i) => lerp(v, b[i], f)); const ua = unit(a), ub = unit(b), far = Math.acos(clamp(ua[0] * ub[0] + ua[1] * ub[1] + ua[2] * ub[2], -1, 1)) > 2.2, via = far ? unit([ua[0] + ub[0] + .7, ua[1] + ub[1], ua[2] + ub[2] + .5]) : null, dir = far ? (f < .5 ? turnTo(ua, via, f * 2) : turnTo(via, ub, f * 2 - 1)) : turnTo(ua, ub, f), want = lerp(la, lb, f); return dir.map(v => v * want); }; // a hand going from straight down to straight up swings out around the side, not through the shoulder
 function buildKeys(move) { if (move._k) return move._k; let cur = { ...REST }; move._k = move.keys.map(([t, d, e]) => { cur = { ...cur, ...d }; return { t, pose: cur, ease: EASE[e] ?? EASE.io }; }); return move._k; }
 function sampleKeys(move, t) {
   const K = buildKeys(move); if (t <= K[0].t) return K[0].pose; const last = K[K.length - 1]; if (t >= last.t) return last.pose;
