@@ -3,7 +3,7 @@ import { TAU, clamp, lerp, smooth, hash, mix, darken, lighten, strSeed, ellipse 
 import { project as pr, rotY, rotX, add, sub } from './rig.js';
 import { resolveExpr } from './face.js';
 import { drawHat, HATS } from './hats.js';
-import { drawShoe, drawSlipperSole, drawSlipperStrap, drawToes } from './shoes.js';
+import { drawShoe, drawSlipperSole, drawSlipperStrap, drawToes, BOOT_SHIN } from './shoes.js';
 import { drawHairFront, drawBackLocks, drawBackHair, drawHijabDrape, HAIR } from './hair.js';
 const { sin, cos, hypot, atan2, PI, abs, max, min } = Math;
 let SHADOW = '#2a1c3e'; // scenes tint the shadows to match their light
@@ -156,12 +156,14 @@ export function detailsFront(ink, spec, sk, rg, col, path) {
   const S = surface(spec, sk), Sf = S, clipOn = fn => { C.save(); C.clip(path); fn(); C.restore(); };
   const panel = (wn, wc, ww, wh, fill) => { const pts = [S('neck', wn, -3), S('chest', wc, 0), S('waist', ww, 0), S('hem', wh, 6), S('hem', -wh, 6), S('waist', -ww, 0), S('chest', -wc, 0), S('neck', -wn, -3)]; clipOn(() => ink.shape(pts, { fill, shade: shadeOf(fill), shadeBy: 5, stroke: false })); return pts; };
   const edges = (wn, wc, ww, wh, lw = 3.4) => { for (const q of [1, -1]) clipOn(() => ink.line([S('neck', q * wn, -3), S('chest', q * wc, 0), S('waist', q * ww, 0), S('hem', q * wh, 6)], { lw, even: 1 })); };
-  const collar = (fill, spread = 1) => { for (const q of [1, -1]) ink.shape([S('neck', q * 1.02, -4), S('chest', q * .62 * spread, -13), S('chest', q * .3 * spread, -3), S('neck', q * .28, 5)], { fill, lw: 3.2, hard: true }); };
+  // A shirt collar: a band hugging the neck with two small points turned down toward the placket, not flaps across the chest.
+  const collar = (fill, spread = 1) => { for (const q of [1, -1]) ink.shape([S('neck', q * 1.08, -6), S('neck', q * .9, 5), S('neck', q * .3 * spread, 17), S('neck', q * .06, 6), S('neck', q * .5, -2)], { fill, lw: 3, hard: true }); };
   const placket = (lv0 = 'neck', n = 4) => { seam(ink, [S(lv0, .08, 8), S('chest', .07, 0), S('waist', .07, 0), S('hem', .07, 0)], dark); seam(ink, [S(lv0, -.08, 8), S('chest', -.07, 0), S('waist', -.07, 0), S('hem', -.07, 0)], dark); for (let i = 0; i < n; i++) dot(ink, S('chest', 0, lerp(-14, 60, i / max(1, n - 1))), 2.3, lighten(col, .5)); };
   if (type === 'tee' || type === 'stripes' || type === 'graphic' || type === 'dress' || type === 'vest' || type === 'sari' || type === 'hivis') crew(ink, S, skin);
   if (type === 'sari') clipOn(() => { const S = (lv, f, d) => Sf(lv, -f, d); const bd = t.border ?? ac, r = rg.skirt, hemY = r ? r.c[1] - 4 : S('hem', 0, 60)[1], pl = lighten(col, .06); hemBorder(ink, rg, bd); const pk = smooth(clamp((cy - .05) / .45)); if (pk > 0) { C.globalAlpha = pk; const top = [-.02, .3].map(f => S('waist', f, 14)), fan = [-.32, .62].map(f => [S('hip', f * lerp(.9, 1.5, pk), 0)[0], hemY + 4]); ink.shape([top[0], top[1], fan[1], fan[0]], { fill: pl, shade: col, shadeBy: 3, lw: 3 }); for (let i = 1; i < 6; i++) { const u = i / 6; seam(ink, [[lerp(top[0][0], top[1][0], u), lerp(top[0][1], top[1][1], u)], [lerp(fan[0][0], fan[1][0], u), hemY - 2]], dark, 2.4); } C.globalAlpha = 1; } const drape = [S('sh', -1, -6), S('sh', -.38, -8), S('chest', .3, 12), S('waist', .98, 0), S('hip', 1.08, 4), S('hip', .72, 22), S('waist', .3, 26), S('chest', -.5, 34), S('chest', -1.04, 20)]; ink.shape(drape, { fill: lighten(col, .1), shade: col, shadeBy: 4, lw: 3 }); ink.line([S('sh', -.38, -8), S('chest', .3, 12), S('waist', .98, 0)], { lw: 9, color: bd, even: 1 }); for (const f of [.3, .62]) seam(ink, [S('chest', f - .9, 6), S('waist', f + .1, 14)], dark, 2.4); });
   if (type === 'hivis') clipOn(() => { const v = t.vest ?? '#f4772a'; for (const q of [1, -1]) ink.shape([S('neck', q * .6, 0), S('sh', q * .96, 2), S('chest', q * 1.05, 16), S('hem', q * 1.06, 0), S('hem', q * .1, 0), S('chest', q * .1, 0)], { fill: v, lw: 3, hard: true }); for (const [lv, d] of [['chest', 26], ['waist', 8]]) for (const q of [1, -1]) ink.line([S(lv, q * .12, d), S(lv, q * 1.02, d)], { lw: 8, color: '#e8e8e0', even: 1 }); });
-  if (type === 'uniform') { for (const q of [1, -1]) ink.shape([S('sh', q * .86, -3), S('sh', q * .46, -3), S('sh', q * .46, 7), S('sh', q * .86, 7)], { fill: darken(col, .24), lw: 2.6, hard: true }); dot(ink, S('chest', -.56, -6), 3.4, '#e5b43a'); }
+  // uniform: shoulder straps running from the collar to the shoulder with a button, a badge on the chest
+  if (type === 'uniform') { for (const q of [1, -1]) { ink.shape([S('sh', q * .42, -5), S('sh', q * .94, -2), S('sh', q * .94, 9), S('sh', q * .42, 7)], { fill: darken(col, .2), lw: 2.6, hard: true }); dot(ink, S('sh', q * .5, 1), 2.6, '#e5b43a'); } const b0 = S('chest', -.55, 0); ink.shape([[b0[0] - 7, b0[1] - 6], [b0[0], b0[1] - 10], [b0[0] + 7, b0[1] - 6], [b0[0] + 6, b0[1] + 5], [b0[0], b0[1] + 10], [b0[0] - 6, b0[1] + 5]], { fill: '#e5b43a', lw: 2.2, hard: true }); }
   if (type === 'graphic') {
     const E = (u, v) => S('chest', u * .46, v * 19 + 16), p = t.print ?? ['bolt', 'star', 'bars', 'ring', 'heart'][spec.seed % 5];
     clipOn(() => {
@@ -475,7 +477,7 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
       if (chappal) { ink.blob(ankleItems(P, spec, true), spec.skin, { shade: shadeOf(spec.skin) }); drawToes(ink, spec, F); drawSlipperStrap(ink, spec, F); } else if (!tucked) drawShoe(ink, spec, F);
       if (B.type === 'dhoti') ink.blob([calf], spec.skin, { shade: shadeOf(spec.skin) });
       if (spec.top.type !== 'dress' && B.type !== 'skirt' && !(TOP[spec.top.type]?.skirt > .9)) {
-        const ty = B.type, fit = ty === 'dhoti' ? u => 1.55 + .7 * u ** .8 : ty === 'wide' ? u => 1.1 + 1.05 * u ** 1.5 : ty === 'joggers' ? u => 1.12 - .14 * u : ty === 'cargo' ? u => 1.14 + .06 * u : u => 1.04 + .2 * u ** 3, fl = tb.r.map((r, i, all) => r * fit(i / (all.length - 1))), end = cut({ pts: tb.pts, r: fl }, tucked ? .8 : ty === 'joggers' ? .96 : ty === 'dhoti' ? .9 : .985), T = boilTube(ink, end, seed + s * 13), cc = B.color, dk = darken(cc, .42);
+        const ty = B.type, fit = ty === 'dhoti' ? u => 1.55 + .7 * u ** .8 : ty === 'wide' ? u => 1.1 + 1.05 * u ** 1.5 : ty === 'joggers' ? u => 1.12 - .14 * u : ty === 'cargo' ? u => 1.14 + .06 * u : u => 1.04 + .2 * u ** 3, fl = tb.r.map((r, i, all) => r * fit(i / (all.length - 1))), end = cut({ pts: tb.pts, r: fl }, tucked ? 1 - b.shin * (BOOT_SHIN - .1) / (b.thigh + b.shin) : ty === 'joggers' ? .96 : ty === 'dhoti' ? .9 : .985), T = boilTube(ink, end, seed + s * 13), cc = B.color, dk = darken(cc, .42);
         hemTube(ink, T, cc);
         jointFolds(ink, h, k, a, b.legR * .9, dk);
         const n = T.pts.length, at0 = f => { const i = Math.min(n - 1, Math.floor(n * f)), q = T.pts[i], w = T.pts[Math.min(n - 1, i + 1)], dx = w[0] - q[0], dy = w[1] - q[1], l = hypot(dx, dy) || 1; return { q, ux: dx / l, uy: dy / l, nx: -dy / l, ny: dx / l, r: T.r[i] }; };
