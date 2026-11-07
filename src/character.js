@@ -24,7 +24,7 @@ export const BOTTOMS = ['pants', 'jeans', 'joggers', 'cargo', 'wide', 'dhoti', '
 export const SHOES = ['sneaker', 'hightop', 'chunky', 'slipon', 'boot', 'sandal', 'slide', 'formal'];
 export const JAWS = ['round', 'square', 'long', 'heart', 'wide', 'egg', 'block', 'pear', 'bean'];
 export const NOSES = ['button', 'long', 'big', 'pointy'];
-export const EYES = ['round', 'small', 'wide', 'tired'];
+export const EYES = ['round', 'small', 'wide', 'tired', 'almond', 'narrow', 'droopy'];
 export const FACIALS = ['none', 'none', 'none', 'stubble', 'moustache', 'beard', 'goatee'];
 export const ACCESSORIES = ['glasses', 'shades', 'cap', 'earrings', 'bindi', 'scarf', 'tie', 'watch', 'hardhat', 'capback', 'lanyard'];
 export function comboCount() { return Object.keys(BODIES).length * SKINS.length * HAIRSTYLES.length * HAIR_COLORS.length * TOPS.length * CLOTH.length * BOTTOMS.length * CLOTH.length * SHOES.length * JAWS.length * NOSES.length * EYES.length * 4 * 2 ** ACCESSORIES.length; }
@@ -41,8 +41,8 @@ export function createCharacter(seed = 1, o = {}) {
     seed, bodyType: bodyName,
     body: {
       stature: S, torso: 106 * B.torso, neck: 22, headR: head, headH: head * 1.06, thigh: legL * .5, shin: legL * .5, upper: armL * .5, fore: armL * .5,
-      footH: 16, footL: 52 * Math.sqrt(B.limb), shoulder: 47 * B.shoulder, hip: 33 * B.hip, belly: B.belly,
-      armR: 13 * B.limb, legR: 18 * B.limb, handR: 19 * Math.sqrt(B.limb), ...o.body,
+      footH: 16, footL: 48 * Math.sqrt(B.limb), shoulder: 47 * B.shoulder, hip: 33 * B.hip, belly: B.belly,
+      armR: 13 * B.limb, legR: 18 * B.limb, handR: 15.5 * Math.sqrt(B.limb), ...o.body,
     },
     skin: o.skin ?? R.pick(SKINS),
     hair,

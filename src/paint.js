@@ -44,8 +44,11 @@ export function hand(ink, wrist, dir, shape, skin, side, r, wristR, clipU = -.02
   const lines = [];
   // a finger: base row at the knuckles, tapering, with a slight curve toward the thumb
   // fingers keep their width to a round tip
-  const F = (v, tip, len, curl = 0, w = .22) => { const pts = [], rad = [], n = 4; for (let i = 0; i <= n; i++) { const u = i / n; pts.push(P(.9 + len * u, lerp(v, tip, u) + curl * u * u)); rad.push(r * lerp(w * .94, w * 1.02, u)); } items.push({ pts, r: rad }); };
-  const curled = (v, w = .23) => items.push({ pts: [P(.92, v), P(1.2, v)], r: [r * w, r * w * .96] });
+  // Cartoon hands have three fingers and a thumb: the shapes below are written for four fingers, so the ring finger is dropped and the other three spread across the palm, a little wider.
+  const LANE = v => (v > .3 ? .36 : v > 0 ? .02 : v < -.3 ? -.34 : null), WIDE = 1.2;
+  const F = (v0, tip0, len, curl = 0, w0 = .22) => { const v = LANE(v0); if (v === null) return; const tip = v + (tip0 - v0) * (v0 < -.3 ? .85 : 1), w = w0 * WIDE; const pts = [], rad = [], n = 4; for (let i = 0; i <= n; i++) { const u = i / n; pts.push(P(.9 + len * u, lerp(v, tip, u) + curl * u * u)); rad.push(r * lerp(w * .94, w * 1.02, u)); } items.push({ pts, r: rad }); };
+  const curled = (v0, w = .23) => { const v = LANE(v0); if (v !== null) items.push({ pts: [P(.92, v), P(1.2, v)], r: [r * w * WIDE, r * w * WIDE * .96] }); };
+  const gap = v => (v > .2 ? .19 : v > -.1 ? -.16 : null); // the line between two fingers
   const T = (a, m, e, r0 = .34, r1 = .27, r2 = .2) => { const pts = [], rad = []; for (let i = 0; i <= 6; i++) { const f = i / 6, k = 1 - f; pts.push(P(k * k * a[0] + 2 * k * f * m[0] + f * f * e[0], k * k * a[1] + 2 * k * f * m[1] + f * f * e[1])); rad.push(r * (f < .5 ? lerp(r0, r1, f * 2) : lerp(r1, r2, f * 2 - 1))); } return { pts, r: rad }; };
   let over = null, crease = null;
   if (shape === 'relax') { F(.45, .58, .8, .16); F(.15, .2, .96, .16); F(-.15, -.16, .9, .12); F(-.44, -.54, .7, .08); items.push(T([.42, .42], [.72, .9], [1.02, .98])); crease = [[.92, .6], [.62, .44]]; } // loose and slightly open: a resting hand, not a fist
@@ -65,7 +68,8 @@ export function hand(ink, wrist, dir, shape, skin, side, r, wristR, clipU = -.02
   const c0 = ink.ctx, A0 = P(clipU, -30), B0 = P(clipU, 30), C0 = P(30, 30), D0 = P(30, -30), keep = new Path2D(); keep.moveTo(A0[0], A0[1]); keep.lineTo(B0[0], B0[1]); keep.lineTo(C0[0], C0[1]); keep.lineTo(D0[0], D0[1]); keep.closePath();
   c0.save(); c0.clip(keep); ink.blob(smoothItems, shade, { lw }); ink.blob(smoothItems.map(shift), skin, { lw: 0 }); c0.restore();
   const c = ink.ctx; c.strokeStyle = darken(skin, .48); c.lineCap = 'round'; c.lineWidth = 1.9 / ink.sc;
-  for (const [p, q] of crease ? [...lines, crease] : lines) { const A = P(p[0], p[1]), B = P(q[0], q[1]); c.beginPath(); c.moveTo(A[0], A[1]); c.lineTo(B[0], B[1]); c.stroke(); }
+  const between = lines.map(([p, q]) => { const g = gap(p[1]); return g === null ? null : [[p[0], g], [q[0], g]]; }).filter(Boolean);
+  for (const [p, q] of crease ? [...between, crease] : between) { const A = P(p[0], p[1]), B = P(q[0], q[1]); c.beginPath(); c.moveTo(A[0], A[1]); c.lineTo(B[0], B[1]); c.stroke(); }
   if (over) { const d = denseItem(over), n = d.pts.length; ink.blob([d], skin, { lw: 2.8 }); const cut = Math.floor(n * .3); ink.blob([{ pts: d.pts.slice(0, cut), r: d.r.slice(0, cut).map(q => q + .9) }], skin, { lw: 0 }); } // the base melts into the palm
 }
 
@@ -226,6 +230,9 @@ export const DHOTI_BORDER = '#a33a2c';
 export function dhotiPleats(ink, spec, sk, cc) { const b = spec.body, Sg = surface(spec, sk), t0 = Sg('hip', -.1, 6), t1 = Sg('hip', .2, 6), k = [pr(sk.lf.k), pr(sk.rf.k)], a = [pr(sk.lf.a), pr(sk.rf.a)], mid = q => [(q[0][0] + q[1][0]) / 2, (q[0][1] + q[1][1]) / 2], km = mid(k), am = mid(a), y = lerp(km[1], am[1], .62), x = lerp(km[0], am[0], .62), w = b.legR * 1.05, p = [t0, t1, [x + w, y], [x + w * .3, y + 7], [x - w * .4, y - 2], [x - w, y + 4]]; ink.shape(p, { fill: lighten(cc, .04), shade: darken(cc, .1), shadeBy: 4, lw: 3 }); for (let i = 1; i < 4; i++) { const u = i / 4; ink.line([[lerp(t0[0], t1[0], u), lerp(t0[1], t1[1], u) + 4], [lerp(x - w, x + w, u), y - 2]], { lw: 2.2, color: darken(cc, .22) }); } }
 // A kurta or Nehru jacket is split at the sides above the hem, so the bottom swings loose instead of reading as one stiff block.
 export function hemSlits(ink, spec, rg, col, path) { if (!['kurta', 'nehru'].includes(spec.top.type) || !rg.skirt) return; const r = rg.skirt, top = rg.hip.c[1], L = (r.c[1] - top) * .5, C = ink.ctx; C.save(); C.clip(path); for (const q of [1, -1]) { const x0 = r.c[0] + q * r.w * .97, x1 = lerp(r.c[0] + q * r.w, rg.hip.c[0] + q * rg.hip.w, .5) * 1 - q * 4; ink.shape([[x0 + q * 6, r.c[1] + 4], [x0 - q * 9, r.c[1] + 4], [x1, r.c[1] - L]], { fill: darken(col, .28), stroke: false, hard: true }); ink.line([[x0 - q * 9, r.c[1] + 2], [x1, r.c[1] - L]], { lw: 3, hard: true }); } C.restore(); }
+// Eye outlines. round, small and wide are ovals of different sizes; almond tapers to the corners with the outer corner lifted; narrow is a flatter almond; droopy lets the outer corner fall, a kind or worn look. s: which side of the face, so the outer corner is known.
+const EYE_SIZE = { round: 1, small: .78, wide: 1.14, tired: .94, almond: 1.06, narrow: 1, droopy: 1 };
+export function eyeShape(type, ex, ey, rx, ry, s) { const sq = type === 'narrow' ? .66 : 1, taper = type === 'almond' ? .3 : type === 'narrow' ? .22 : type === 'droopy' ? .12 : 0, lift = type === 'almond' ? .2 : type === 'narrow' ? .1 : type === 'droopy' ? -.2 : 0; return a => { const c = cos(a), outer = Math.max(0, s * c); return [ex + c * rx, ey + sin(a) * ry * sq * (1 - taper * c * c) - outer * ry * lift]; }; }
 // A wide border along the bottom of a long garment, clipped to it.
 function hemBorder(ink, rg, color, h = 16) { const r = rg.skirt; if (!r) return; ink.shape([[r.c[0] - r.w * 1.6, r.c[1] - h], [r.c[0] + r.w * 1.6, r.c[1] - h], [r.c[0] + r.w * 1.6, r.c[1] + 30], [r.c[0] - r.w * 1.6, r.c[1] + 30]], { fill: color, stroke: false }); ink.line([[r.c[0] - r.w * 1.6, r.c[1] - h], [r.c[0] + r.w * 1.6, r.c[1] - h]], { lw: 2.6, color: darken(color, .3), even: 1 }); }
 export function detailsBack(ink, spec, sk, rg, col, path) {
@@ -324,7 +331,7 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
   const noseT = f.nose, nq = P(0, -.16, .96), ns = { button: [.1, .1, .13], long: [.1, .11, .3], big: [.15, .16, .17], pointy: [.08, .08, .26] }[noseT] ?? [.1, .09, .1];
   const face = cyS > -.18;
   // eyes
-  const eyeK = { round: 1, small: .78, wide: 1.14, tired: .94 }[f.eyes] ?? 1, eyeGap = .47, eyeLat = .08;
+  const eyeK = EYE_SIZE[f.eyes] ?? 1, eyeGap = .47, eyeLat = .08;
   // Blinks are shaped over four frames (half, shut, shut, half), come every second or two, and go with expression changes and head turns.
   const bW = 1.4, bK = Math.floor(t / bW), bOn = hash(spec.seed * 7 + 13, bK, 91) < .78, bFr = Math.floor((t - (bK * bW + .1 + hash(spec.seed * 7 + 13, bK, 92) * (bW - .4))) * 24); let blinkAmt = bOn && bFr >= 0 && bFr < 4 ? (bFr === 0 || bFr === 3 ? .5 : 1) : 0;
   if (pose.exprFrom && pose.exprF > .1 && pose.exprF < .9) blinkAmt = max(blinkAmt, .5); if (pose.blink) blinkAmt = 1; const blink = blinkAmt >= 1;
@@ -340,9 +347,9 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
       else { const pts = []; for (let i = 0; i <= 8; i++) { const a = i / 8; pts.push([ex + (a - .5) * 2 * rx, ey + (dir * 4 * (a - .5) ** 2 - dir) * -ry * .42 * -1 * (blink ? -.25 : 1)]); } ink.line(pts, { lw: 5.5 }); }
     } else {
       const lx = clamp(expr.look[0] + pose.look[0], -1, 1), ly = clamp(expr.look[1] + pose.look[1], -1, 1);
-      const eyeP = ellipse(ex, ey, rx, ry, 24), ep = ink.path(eyeP); ctx.save(); ctx.clip(ep);
+      const eyeAt = eyeShape(f.eyes, ex, ey, rx, ry, s), eyeP = Array.from({ length: 24 }, (_, i) => eyeAt(i / 24 * TAU)), ep = ink.path(eyeP); ctx.save(); ctx.clip(ep);
       ctx.fillStyle = '#fffdf7'; ctx.fill(ep);
-      const pr0 = R * .15 * eyeK * clamp(expr.pupil / .55, .45, 1.3), px = ex + lx * rx * .42 + sy * rx * .25, py = ey - ly * ry * .36;
+      const pr0 = R * .19 * eyeK * clamp(expr.pupil / .55, .45, 1.3), px = ex + lx * rx * .42 + sy * rx * .25, py = ey - ly * ry * .36;
       ctx.fillStyle = ink.inkColor; ctx.beginPath(); ctx.ellipse(px, py, pr0 * sx, pr0 * 1.1, 0, 0, TAU); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(px - pr0 * .3 * sx, py - pr0 * .42, pr0 * .24, 0, TAU); ctx.fill();
       // upper lid comes down, tilted with the brow
@@ -355,7 +362,7 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
       if (expr.lower > 0) { ctx.fillStyle = skin; ctx.fillRect(ex - rx * 1.3, ey + ry * (1 - expr.lower * 2), rx * 2.6, ry * 1.2); ctx.beginPath(); ctx.moveTo(ex - rx * 1.2, ey + ry * (1 - expr.lower * 2)); ctx.lineTo(ex + rx * 1.2, ey + ry * (1 - expr.lower * 2)); ctx.stroke(); }
       ctx.restore();
       ink.stroke(ep, 2);
-      if (open >= .96) { const arc = []; for (let i = 0; i <= 8; i++) { const b0 = PI * (1.08 + .84 * i / 8); arc.push([ex + cos(b0) * rx, ey + sin(b0) * ry]); } ink.line(arc, { lw: 7.5, seed: seedH + 30 + s }); }
+      if (open >= .96) { const arc = []; for (let i = 0; i <= 8; i++) arc.push(eyeAt(PI * (1.08 + .84 * i / 8))); ink.line(arc, { lw: 7.5, seed: seedH + 30 + s }); }
       if (f.eyes === 'tired') ink.line([[ex - rx * .75, ey + ry * 1.2], [ex, ey + ry * 1.34], [ex + rx * .75, ey + ry * 1.2]], { lw: 2.5, color: darken(skin, .4) });
     }
     if (expr.tears) { const w = rx * .3, L = ry * 2.05, y0 = ey + ry * .15, wob = sin(t * 9 + s) * 1.2; ink.shape([[ex - w * .7, y0], [ex + w * .7, y0], [ex + w + wob, y0 + L * .6], [ex + w * .7, y0 + L * .95], [ex, y0 + L * 1.1], [ex - w * .7, y0 + L * .95], [ex - w + wob, y0 + L * .6]], { fill: '#7cd0f2', lw: 2 }); }
@@ -406,7 +413,7 @@ function drawHead(ink, spec, sk, pose, t, expr, swing = 0, hats = true) {
   if (spec.acc.includes('glasses') || spec.acc.includes('shades')) { C.save(); C.clip(hp); // lenses stay on the face
     const dark = spec.acc.includes('shades'), Ps = [-1, 1].map(s => [s, P(s * eyeGap, eyeLat), cos(s * eyeGap + hy)]);
     let prev = null;
-    const eyeK2 = { round: 1, small: .78, wide: 1.14, tired: .94 }[f.eyes] ?? 1, bridge = [];
+    const eyeK2 = EYE_SIZE[f.eyes] ?? 1, bridge = [];
     for (const [s, q, fac] of Ps) {
       if (fac < .32) continue; const sx = clamp(fac, .32, 1), pk = eyePop(sx), rx = (R * .25 * eyeK2 * pk + R * .05) * sx * lerp(.75, 1, sx), ry = H * .3 * eyeK2 * pk * lerp(.8, 1, sx) + H * .045, eyeW = R * .25 * eyeK2 * sx * pk, gx = clamp(q.x, -R * .95 + eyeW, R * .95 - eyeW);
       if (dark) ink.ell(gx, q.y, rx, ry, { fill: '#22202e', lw: 4 });
@@ -435,7 +442,7 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
   const seed = spec.seed * 97 + 3, rootZ = sk.root[2];
   const arm = (A, s) => {
     if (arms?.skip && A === sk[arms.skip]) return;
-    const a = pr(A.s), e = pr(A.e), h = pr(A.h), tb = bend(a, e, h, b.armR * 1.02, b.armR * .84, b.armR * .66);
+    const a = pr(A.s), e = pr(A.e), h = pr(A.h), tb = bend(a, e, h, b.armR * 1.14, b.armR * .84, b.armR * .58);
     const sh = boilTube(ink, tb, seed + s * 7);
     if (top.sleeve < 1) ink.blob([sh], spec.skin, { shade: shadeOf(spec.skin) });
     const shape = s > 0 ? p.lhShape : p.rhShape;
@@ -456,7 +463,7 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
     if (hold && hold[s > 0 ? 'l' : 'r']) hold[s > 0 ? 'l' : 'r'](ink, h, eH, 'front');
   };
   const leg = (F, s) => {
-    const h = pr(F.h), k = pr(F.k), a = pr(F.a), tb = bend(h, k, a, b.legR * 1.02, b.legR * .82, b.legR * .62), B = spec.bottom, bareLeg = B.type === 'shorts' || B.type === 'skirt' || spec.top.type === 'dress', chappal = spec.shoes.type === 'sandal' || spec.shoes.type === 'slide', tucked = spec.shoes.type === 'boot' && B.tucked !== false && !bareLeg && ['pants', 'jeans', 'cargo', 'joggers'].includes(B.type);
+    const h = pr(F.h), k = pr(F.k), a = pr(F.a), tb = bend(h, k, a, b.legR * 1.12, b.legR * .8, b.legR * .56), B = spec.bottom, bareLeg = B.type === 'shorts' || B.type === 'skirt' || spec.top.type === 'dress', chappal = spec.shoes.type === 'sandal' || spec.shoes.type === 'slide', tucked = spec.shoes.type === 'boot' && B.tucked !== false && !bareLeg && ['pants', 'jeans', 'cargo', 'joggers'].includes(B.type);
     const tube = boilTube(ink, tb, seed + s * 13), P = footParts(spec, F);
     const calf = { pts: tube.pts, r: tube.r.map((r, i, all) => { const n = all.length, ki = n * .45, u = (i - ki) / (n - ki); return r * .9 * (1 + (i > ki ? .3 * sin(u * PI) ** 1.4 * (1 - u * .35) : 0)); }) };
     if (chappal) drawSlipperSole(ink, spec, F);

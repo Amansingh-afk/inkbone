@@ -16,9 +16,9 @@ export const project = v => [v[0], -v[1] + v[2] * .1];
 export const REST = {
   yaw: 0, lean: 0, side: 0, bend: 0, twist: 0, crouch: 0, hop: 0, shrug: 0, sq: 0, shift: [0, 0],
   headYaw: 0, headPitch: 0, headRoll: 0,
-  curve: .05, arch: 0, hipTilt: .05, shTilt: -.04, // line of action: curve bends the spine sideways, arch front to back; hips and shoulders tilt against each other
-  lh: [.27, -.9, .12], rh: [.15, -.94, .02], // shoulder-relative in arm lengths: outward, up, forward
-  lf: [.13, 0, .06], rf: [.07, 0, -.05],   // floor-relative in leg lengths: outward, lift, forward
+  curve: .07, arch: 0, hipTilt: .08, shTilt: -.05, // line of action: curve bends the spine sideways, arch front to back; hips and shoulders tilt against each other
+  lh: [.34, -.84, .16], rh: [.22, -.88, .06], // shoulder-relative in arm lengths: outward, up, forward. At rest the hands sit off the hips with soft elbows, so arms never merge into the body's silhouette
+  lf: [.17, 0, .1], rf: [.05, 0, -.04],   // floor-relative in leg lengths: outward, lift, forward. Weight on the right leg, the left loose and a little forward
   lhShape: 'relax', rhShape: 'relax', lElbow: 0, rElbow: 0, lToe: .22, rToe: .22, lPole: [0, -1, 0], rPole: [0, -1, 0], lPoleW: 0, rPoleW: 0, lPitch: 0, rPitch: 0, // pitch: toe up +, heel up -
   expr: null, look: [0, 0], talk: 0, x: 0, z: 0, lMid: 0, rMid: 0, lAim: [0, 1, 0], rAim: [0, 1, 0], lAimW: 0, rAimW: 0, // lMid/rMid: measure the hand from the chest midline, so hands can meet on any body. Aim: finger direction, W: how much it overrides the forearm
   lTarget: [0, 0, 0], rTarget: [0, 0, 0], lTargetW: 0, rTargetW: 0, lfTarget: [0, 0, 0], rfTarget: [0, 0, 0], lfTargetW: 0, rfTargetW: 0, pelvisY: null, // targets: hand or foot goes to a fixed point (floor-relative rig units), for touching the world

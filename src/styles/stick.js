@@ -5,13 +5,13 @@ import { resolveExpr } from '../face.js';
 import { drawHat, HATS } from '../hats.js';
 import { drawShoe, drawSlipperSole, drawSlipperStrap, drawToes } from '../shoes.js';
 import { drawHairFront, drawBackLocks, drawBackHair, headPoint, drawHijabDrape, HAIR } from '../hair.js';
-import { ankleItems, limbBand, bend, cut, ringsOf, torsoPoly, dense, skirtRing, TOP, hand, footParts, detailsFront, detailsBack, hemTube, DHOTI_BORDER, dhotiPleats, hemSlits } from '../paint.js';
+import { ankleItems, limbBand, bend, cut, ringsOf, torsoPoly, dense, skirtRing, TOP, hand, footParts, detailsFront, detailsBack, hemTube, DHOTI_BORDER, dhotiPleats, hemSlits, eyeShape } from '../paint.js';
 const { sin, cos, abs, max, min, PI, hypot } = Math;
 
 export function makeStick(spec, o = {}) {
   const k = { average: 1, slim: .94, stout: 1.02, tall: 1.14, short: .84, broad: 1.04, pear: .96, lanky: 1.2, barrel: .92, stocky: .88 }[spec.bodyType] ?? 1, fat = { stout: 1.45, broad: 1.5, pear: 1.35, barrel: 1.6, stocky: 1.3, slim: .85, lanky: .8 }[spec.bodyType] ?? 1;
   spec.style = 'stick';
-  spec.body = { ...spec.body, stature: 400 * k, headR: 64, headH: 62, neck: 8, torso: 84 * lerp(1, k, .5), thigh: 76 * k, shin: 78 * k, upper: 62 * k, fore: 62 * k, shoulder: 18 * fat, hip: 16 * fat, belly: 0, armR: 4.5, legR: 5, handR: 11, footH: 14, footL: 54, ...o.body };
+  spec.body = { ...spec.body, stature: 400 * k, headR: 64, headH: 62, neck: 8, torso: 80 * lerp(1, k, .5), thigh: 64 * k, shin: 66 * k, upper: 54 * k, fore: 54 * k, shoulder: 18 * fat, hip: 16 * fat, belly: 0, armR: 4.5, legR: 5, handR: 11, footH: 13, footL: 44, ...o.body };
   spec.skin = o.skin ?? '#fbfaf6';
   spec.stickShoes = o.stickShoes ?? true;
   return spec;
@@ -30,7 +30,7 @@ function face(ink, spec, sk, pose, t, expr) {
     const sx = clamp(fc, .35, 1), rx = R * .25 * sx * popK, ry = H * .29 * popK, lid = (s > 0 ? expr.lidL : expr.lidR) * (1 - shut), brow = s > 0 ? expr.browL : expr.browR, ex = clamp(q.x, -R * .94 + rx, R * .94 - rx), ey = q.y;
     if (lid < .06) { const d = expr.arc === 'up' ? -1 : 1, pts = []; for (let i = 0; i <= 8; i++) { const u = i / 8 * 2 - 1; pts.push([ex + u * rx, ey + d * ry * .34 * (1 - u * u) * (shut ? -.3 : 1)]); } ink.line(pts, { lw: 4.6 }); }
     else {
-      const path = ink.path(ellipse(ex, ey, rx, ry, 22)); c0.save(); c0.clip(path); c0.fillStyle = '#ffffff'; c0.fill(path); const pr0 = R * .15 * clamp(expr.pupil / .55, .5, 1.3), px = ex + (lx * .5 + sy * .3) * rx, py = ey - ly * ry * .42; c0.fillStyle = ink.inkColor; c0.beginPath(); c0.ellipse(px, py, pr0 * sx, pr0 * 1.08, 0, 0, TAU); c0.fill(); c0.fillStyle = '#fff'; c0.beginPath(); c0.arc(px - pr0 * .3 * sx, py - pr0 * .36, pr0 * .24, 0, TAU); c0.fill();
+      const at = eyeShape(spec.face?.eyes, ex, ey, rx, ry, s), path = ink.path(Array.from({ length: 22 }, (_, i) => at(i / 22 * TAU))); c0.save(); c0.clip(path); c0.fillStyle = '#ffffff'; c0.fill(path); const pr0 = R * .19 * clamp(expr.pupil / .55, .5, 1.3), px = ex + (lx * .5 + sy * .3) * rx, py = ey - ly * ry * .42; c0.fillStyle = ink.inkColor; c0.beginPath(); c0.ellipse(px, py, pr0 * sx, pr0 * 1.08, 0, 0, TAU); c0.fill(); c0.fillStyle = '#fff'; c0.beginPath(); c0.arc(px - pr0 * .3 * sx, py - pr0 * .36, pr0 * .24, 0, TAU); c0.fill();
       if (lid < .96) { const ly0 = ey - ry + (1 - lid) * ry * 2, tilt = (brow[1] ?? 0) * ry * .4 * s; c0.fillStyle = skin; c0.beginPath(); c0.moveTo(ex - rx * 1.3, ey - ry * 1.3); c0.lineTo(ex + rx * 1.3, ey - ry * 1.3); c0.lineTo(ex + rx * 1.3, ly0 - tilt); c0.lineTo(ex - rx * 1.3, ly0 + tilt); c0.closePath(); c0.fill(); c0.strokeStyle = ink.inkColor; c0.lineWidth = 3.6 / ink.sc; c0.beginPath(); c0.moveTo(ex + rx * 1.3, ly0 - tilt); c0.lineTo(ex - rx * 1.3, ly0 + tilt); c0.stroke(); }
       c0.restore(); ink.stroke(path, 3.6);
     }
@@ -47,7 +47,7 @@ export function paintStick(ink, spec, sk, { t = 0, swing = 0, hold = null, arms 
   c.save(); if (p.sq) { c.translate(p.x, 0); c.scale(1 + p.sq, 1 - p.sq); c.translate(-p.x, 0); } if (p.spin) { const d = sin(p.yaw) >= 0 ? -1 : 1; c.translate(p.x, 0); c.rotate(p.spin * d); c.translate(-p.x, 0); }
   const arm = (A, s) => { if (arms?.skip && A === sk[arms.skip]) return; const a = pr(A.s), e = pr(A.e), h = pr(A.h), shape = s > 0 ? p.lhShape : p.rhShape, key = s > 0 ? 'l' : 'r'; let fd = [h[0] - e[0], h[1] - e[1]], fl = hypot(fd[0], fd[1]) || 1; fd = [fd[0] / fl, fd[1] / fl]; if (A.aimW > 0) { const q = [A.aim[0], -A.aim[1] + A.aim[2] * .1], ql = hypot(q[0], q[1]) || 1; fd = [lerp(fd[0], q[0] / ql, A.aimW), lerp(fd[1], q[1] / ql, A.aimW)]; fl = hypot(fd[0], fd[1]) || 1; fd = [fd[0] / fl, fd[1] / fl]; }
     limb(ink, a, e, h, W, seed + s); const hE = [h[0] - fd[0] * 30, h[1] - fd[1] * 30]; hold?.[key]?.(ink, h, hE, 'behind');
-    if (shape === 'relax') ink.ell(h[0] + fd[0] * 3, h[1] + fd[1] * 3, 6, 6, { fill: ink.inkColor, stroke: false }); else { const chestX = pr(sk.chest)[0], px = -fd[1], py = fd[0], inward = abs(cos(sk.chestYaw)) > .4 ? Math.sign(chestX - h[0]) || 1 : (sin(sk.chestYaw) >= 0 ? 1 : -1), side = px * inward * abs(fd[1]) - py * abs(fd[0]) >= 0 ? 1 : -1; hand(ink, h, fd, shape, spec.skin, side, b.handR, 2.4, -.2); }
+    { const chestX = pr(sk.chest)[0], px = -fd[1], py = fd[0], inward = abs(cos(sk.chestYaw)) > .4 ? Math.sign(chestX - h[0]) || 1 : (sin(sk.chestYaw) >= 0 ? 1 : -1), side = px * inward * abs(fd[1]) - py * abs(fd[0]) >= 0 ? 1 : -1; hand(ink, h, fd, shape, spec.skin, side, b.handR * (shape === 'relax' ? .86 : 1), 2.4, -.2); }
     if (top.sleeve > 0 && type !== 'none') { const tb = bend(a, e, h, b.armR * 1.6, b.armR * 1.4, b.armR * 1.2); hemTube(ink, cut(tb, min(.97, type === 'hoodie' || type === 'jacket' || type === 'shirt' || type === 'uniform' ? top.sleeve : .34)), col); }
     hold?.[key]?.(ink, h, hE, 'front'); };
   if (arms?.only) { arm(sk[arms.only], arms.only === 'L' ? 1 : -1); c.restore(); return; }
