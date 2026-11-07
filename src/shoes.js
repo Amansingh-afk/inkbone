@@ -46,6 +46,6 @@ export function drawShoe(ink, spec, F) {
 }
 // Chappals and slides: a real sole under a bare foot.
 export function drawSlipperSole(ink, spec, F) { const p = footParts(spec, F), col = spec.shoes.color; loft(ink, p, SOLE.flat, col, { shade: darken(col, .3) }); }
-export function drawSlipperStrap(ink, spec, F) { const p = footParts(spec, F), { W, at, dir } = p, col = spec.shoes.color, t = spec.shoes.type, band = (pts, w) => { ink.line(pts, { lw: w + 3.6, even: 1 }); ink.line(pts, { lw: w, color: col, even: 1 }); }; if (t === 'slide') { loft(ink, p, [[.3, .74, .22, 1.12], [.46, .8, .22, 1.06], [.64, .82, .22, .94]], col, { shade: darken(col, .22), lw: 3.8 }); return; } const post = at(.74, 0, W * .86), rise0 = W * (.5 + .3 * abs(dir[2])); for (const s of [1, -1]) { const e = at(.2, s * .74, W * .5), m = [lerp(post[0], e[0], .5), lerp(post[1], e[1], .5) - rise0]; band([post, m, e], 6.4); } band([post, at(.84, 0, W * .46)], 5); }
+export function drawSlipperStrap(ink, spec, F) { const p = footParts(spec, F), col = spec.shoes.color; loft(ink, p, [[.3, .74, .22, 1.12], [.46, .8, .22, 1.06], [.64, .82, .22, .94]], col, { shade: darken(col, .22), lw: 3.8 }); }
 // Toes on a bare foot, as small marks at its front edge.
 export function drawToes(ink, spec, F) { const p = footParts(spec, F), { at, W, dir } = p; if (dir[2] < -.3) return; const c = darken(spec.skin, .42); for (const v of [-.42, -.14, .14, .42]) ink.line([at(.96, v, W * .6), at(1.07, v * .96, W * .46)], { lw: 2.2, color: c, even: 1, hard: true }); }

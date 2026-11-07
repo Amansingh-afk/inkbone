@@ -5,6 +5,7 @@ export * from './character.js';
 export * from './paint.js';
 export * from './act.js';
 export * from './props.js';
+export * from './animal.js';
 export { MOVES, moveNames, TALKS, pickTalk } from './moves/index.js';
 export { DUETS, duetNames, drawDuet, solveDuet, duetDur, duetGap } from './duets.js';
 export { FX, fxNames } from './fx/index.js';

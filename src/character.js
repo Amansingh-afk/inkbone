@@ -18,15 +18,17 @@ export const BODIES = {
 export const SKINS = ['#fbd9bc', '#f3c49c', '#e6ad80', '#d8976a', '#c58355', '#a96c42', '#8a5535', '#6b4029'];
 export const HAIR_COLORS = ['#1e1a2b', '#3a2a2a', '#5c3a26', '#8a5a2c', '#c98b3a', '#e8c66a', '#b7b4bd', '#e9e6ea', '#b84a2e', '#3d6fd0', '#d3589c'];
 export const CLOTH = ['#6f9fd0', '#3f5f8f', '#e8574f', '#f08a3c', '#f4c542', '#7cb342', '#2f9e8f', '#3a86d8', '#5a5fd0', '#9256c9', '#d9568f', '#f2ece0', '#39394a', '#6d7a8a', '#8a6242', '#c7a77a', '#1f6f5c', '#a0303f', '#5c7a3a', '#274a7a'];
+// picked by name only, never at random, so existing seeds keep their hair
+export const HAIR_EXTRA = ['wild', 'swoop'];
 export const HAIRSTYLES = ['crop', 'messy', 'spiky', 'swept', 'slick', 'sidepart', 'quiff', 'curly', 'afro', 'combover', 'bald', 'long', 'bob', 'ponytail', 'bun', 'braid', 'pigtails'];
-export const TOPS = ['tee', 'graphic', 'stripes', 'shirt', 'hoodie', 'sweater', 'jacket', 'bomber', 'puffer', 'kurta', 'nehru', 'blazer', 'vest', 'labcoat', 'dress', 'sari', 'uniform', 'hivis'];
-export const BOTTOMS = ['pants', 'jeans', 'joggers', 'cargo', 'wide', 'dhoti', 'shorts', 'skirt'];
-export const SHOES = ['sneaker', 'hightop', 'chunky', 'slipon', 'boot', 'sandal', 'slide', 'formal'];
+export const TOPS = ['tee', 'graphic', 'stripes', 'shirt', 'hoodie', 'sweater', 'jacket', 'bomber', 'puffer', 'kurta', 'nehru', 'blazer', 'vest', 'labcoat', 'dress', 'sari', 'uniform', 'hivis', 'toga', 'pelt', 'tailcoat', 'wraps'];
+export const BOTTOMS = ['pants', 'jeans', 'joggers', 'cargo', 'wide', 'dhoti', 'shorts', 'skirt', 'kilt', 'wraps'];
+export const SHOES = ['sneaker', 'hightop', 'chunky', 'slipon', 'boot', 'slide', 'formal', 'bare'];
 export const JAWS = ['round', 'square', 'long', 'heart', 'wide', 'egg', 'block', 'pear', 'bean'];
 export const NOSES = ['button', 'long', 'big', 'pointy'];
 export const EYES = ['round', 'small', 'wide', 'tired', 'almond', 'narrow', 'droopy'];
 export const FACIALS = ['none', 'none', 'none', 'stubble', 'moustache', 'beard', 'goatee'];
-export const ACCESSORIES = ['glasses', 'shades', 'cap', 'earrings', 'bindi', 'scarf', 'tie', 'watch', 'hardhat', 'capback', 'lanyard'];
+export const ACCESSORIES = ['glasses', 'shades', 'cap', 'earrings', 'bindi', 'scarf', 'tie', 'watch', 'capback', 'lanyard'];
 export function comboCount() { return Object.keys(BODIES).length * SKINS.length * HAIRSTYLES.length * HAIR_COLORS.length * TOPS.length * CLOTH.length * BOTTOMS.length * CLOTH.length * SHOES.length * JAWS.length * NOSES.length * EYES.length * 4 * 2 ** ACCESSORIES.length; }
 
 export const STYLE_MAKERS = {}; // filled by src/styles
@@ -36,7 +38,7 @@ export function createCharacter(seed = 1, o = {}) {
   const S = 400 * B.stature, legL = 130 * B.leg * B.stature, armL = 126 * B.arm * B.stature, head = 76 * B.head;
   const hair = { style: R.pick(HAIRSTYLES), color: R.pick(HAIR_COLORS.slice(0, 7)), ...o.hair };
   const dressy = R.next() < .22;
-  const topType = o.top?.type ?? (dressy ? 'dress' : R.pick(TOPS.filter(t => !['dress', 'sari', 'uniform', 'hivis'].includes(t))));
+  const topType = o.top?.type ?? (dressy ? 'dress' : R.pick(TOPS.filter(t => !['dress', 'sari', 'uniform', 'hivis', 'toga', 'pelt', 'tailcoat', 'wraps'].includes(t))));
   const spec = {
     seed, bodyType: bodyName,
     body: {
@@ -49,13 +51,17 @@ export function createCharacter(seed = 1, o = {}) {
     face: { jaw: R.pick(JAWS), nose: R.pick(NOSES), eyes: R.pick(EYES), facial: R.pick(FACIALS), browW: R.range(.85, 1.3), facialColor: hair.color, ...o.face },
     top: { type: topType, color: R.pick(CLOTH), accent: R.pick(CLOTH), inner: R.pick(['#f5f1e6', '#f5f1e6', '#39394a', '#e8574f', '#f4c542']), ...o.top },
     bottom: { type: R.pick(BOTTOMS.slice(0, 6)), color: R.pick(['#39394a', '#274a7a', '#6d7a8a', '#8a6242', '#c7a77a', '#1f6f5c', '#2c2c3a']), ...o.bottom },
-    shoes: { type: R.pick(SHOES), accent: R.pick(CLOTH), color: R.pick(['#f2ece0', '#39394a', '#8a6242', '#e8574f', '#3a86d8', '#2c2c3a']), ...o.shoes },
+    shoes: { type: R.pick(SHOES.filter(t => t !== 'bare')), accent: R.pick(CLOTH), color: R.pick(['#f2ece0', '#39394a', '#8a6242', '#e8574f', '#3a86d8', '#2c2c3a']), ...o.shoes },
     acc: o.acc ?? ACCESSORIES.filter(() => R.next() < .13),
   };
+  // an animal head (see animal.js) and its colours
+  if (o.head) spec.head = o.head; for (const k of ['earInner', 'muzzle', 'mane', 'beak']) if (o[k]) spec[k] = o[k];
   if (spec.face.facial !== 'none' && !o.face?.facial && ['bob', 'long', 'ponytail', 'bun', 'braid', 'pigtails', 'hijab'].includes(hair.style)) spec.face.facial = 'none';
   // Things that can't be worn together.
   if (spec.acc.includes('glasses') && spec.acc.includes('shades')) spec.acc = spec.acc.filter(a => a !== 'glasses');
-  { const hats = ['cap', 'capback', 'hardhat', 'fedora', 'crown'].filter(a => spec.acc.includes(a)); if (hats.length > 1) spec.acc = spec.acc.filter(a => !hats.slice(1).includes(a)); if (hair.style === 'hijab' || hair.style === 'afro') spec.acc = spec.acc.filter(a => !hats.includes(a)); }
+  // retired items: an old spec asking for them gets the nearest thing still drawn
+  spec.acc = spec.acc.map(a => (a === 'hardhat' ? 'cap' : a)); if (spec.shoes.type === 'sandal') spec.shoes.type = 'slipon';
+  { const hats = ['cap', 'capback', 'fedora', 'crown', 'bowler', 'tophat', 'bicorne', 'helmet', 'pith', 'laurel', 'nemes'].filter(a => spec.acc.includes(a)); if (hats.length > 1) spec.acc = spec.acc.filter(a => !hats.slice(1).includes(a)); if (hair.style === 'hijab' || hair.style === 'afro') spec.acc = spec.acc.filter(a => !hats.includes(a)); }
   if (spec.bottom.type === 'dhoti' && !o.bottom?.color) spec.bottom.color = DHOTI; // a dhoti is off-white unless asked otherwise
   if (o.style && STYLE_MAKERS[o.style]) STYLE_MAKERS[o.style](spec, o); else if (o.style) spec.style = o.style;
   return spec;
