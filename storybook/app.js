@@ -1,4 +1,5 @@
 import { makePreview } from '../src/preview.js';
+import { mountOutfits } from './outfits.js';
 import { duetNames, MOVES, moveNames, FX, fxNames, setNames, THEMES, transitionNames, exprNames, PAL, BODIES, HAIRSTYLES, TOPS, comboCount, castNames, styleNames } from '../src/index.js';
 const $ = s => document.querySelector(s);
 const WORLD_NAMES = ['flat', 'office', 'police-station', 'village', 'canal', 'market', 'chai-stall'], CAM_NAMES = ['hold', 'push-in', 'pull-out', 'orbit', 'crane-up', 'follow', 'whip', 'fly-through'];
@@ -8,6 +9,7 @@ const opts = () => { const o = {}; if (S.look !== 'round') o.style = S.look; if 
 const TABS = {
   moves: { items: () => moveNames, what: n => 'move:' + n, size: [320, 360], code: n => `drawAct(ink, createCharacter(${S.seed}${optStr()}), '${n}', t, { x, y, scale: 1.4, facing: ${S.facing} });` },
   duets: { items: () => duetNames, what: n => 'duet:' + n, size: [420, 360], code: n => `drawDuet(ink, specA, specB, '${n}', t, { x, y, scale: 1.2 });` },
+  outfits: { custom: true, size: [0, 0] },
   cast: { items: () => castNames, what: n => 'cast:' + n, size: [320, 360], code: n => `drawAct(ink, CAST.${n}, 'idle', t, { x, y, scale: 1.4 });` },
   characters: { items: () => Array.from({ length: 24 }, (_, i) => S.seed + i), what: () => 'character', size: [320, 360], label: n => 'seed ' + n, seedOf: n => n, code: n => `createCharacter(${n}${optStr()})` },
   expressions: { items: () => exprNames, what: n => 'expression:' + n, size: [320, 300], code: n => `solve(spec, { yaw: ${S.facing}, expr: '${n}' })` },
@@ -37,14 +39,15 @@ function controls() {
   if (['worlds', 'cameras', 'reel3d'].includes(t)) { const lk = document.createElement('select'); for (const v of styleNames()) lk.append(new Option(v, v)); lk.value = S.look; lk.onchange = () => { S.look = lk.value; build(); }; c.append(field('style', lk)); const tm = document.createElement('select'); for (const v of ['day', 'sunset', 'night']) tm.append(new Option(v, v)); tm.value = S.time; tm.onchange = () => { S.time = tm.value; build(); }; c.append(field('time', tm)); }
   if (t === 'sets') { const s = sel('theme', Object.keys(THEMES), 'theme', 'warm'); c.append(s); }
 }
-let cards = [], running = new Set();
+let cards = [], running = new Set(), room = null;
 const io = new IntersectionObserver(es => { for (const e of es) e.isIntersecting ? running.add(e.target._card) : running.delete(e.target._card); });
 function cfg(name, W, H) { const T = TABS[S.tab]; return { what: T.what(name), seed: T.seedOf ? T.seedOf(name) : S.seed, facing: S.tab === 'characters' ? null : S.facing, theme: S.theme, palette: S.palette || null, opts: opts(), W, H }; }
 const cfg3 = (name, W, H) => ({ what: TABS[S.tab].what(name), W, H, time: S.time, style: S.look === 'round' ? null : S.look });
 const stub3D = (name, W, H) => { const q = cfg3(name, W, H); let real = null, pending = false; return { dur: 8, draw(c, t) { if (real) { real.draw(c, t); return; } c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#d6cab5'; c.fillRect(0, 0, W, H); c.fillStyle = '#6f6479'; c.font = '14px sans-serif'; c.fillText('building 3D…', 16, 26); if (!pending) { pending = true; load3D().then(m => { real = m.makePreview3D(q); real.draw(c, Math.min(2, real.dur / 2)); }); } } }; };
 function build() {
   controls(); for (const b of nav.children) b.setAttribute('aria-pressed', b.dataset.t === S.tab);
-  const g = $('#grid'); g.textContent = ''; running.clear(); io.disconnect(); const T = TABS[S.tab]; const [W, H] = T.size;
+  room?.(); room = null; const g = $('#grid'); g.textContent = ''; running.clear(); io.disconnect(); const T = TABS[S.tab]; const [W, H] = T.size;
+  if (T.custom) { cards = []; g.style.gridTemplateColumns = '1fr'; room = mountOutfits(g); return; }
   g.style.gridTemplateColumns = S.tab === 'reel' ? '1fr' : S.tab === 'sets' ? 'repeat(auto-fill,minmax(360px,1fr))' : '';
   cards = T.items().map(name => {
     const el = document.createElement('button'); el.className = 'card'; const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const sp = document.createElement('span'); sp.textContent = T.label ? T.label(name) : name; el.append(cv, sp); g.append(el);
