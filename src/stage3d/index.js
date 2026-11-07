@@ -6,7 +6,7 @@ import { Ink, Rng, hash, mix, clamp } from '../core.js';
 import { drawAct, groundSpeed, poseAt } from '../act.js';
 import { DUETS, drawDuet } from '../duets.js';
 import { solve } from '../rig.js';
-import { MOVES } from '../moves/index.js';
+import { MOVES, pickTalk } from '../moves/index.js';
 import { FX } from '../fx/index.js';
 import { setShadowTint, drawObjectFace } from '../paint.js';
 import { createCharacter, asStyle } from '../character.js';
@@ -46,7 +46,7 @@ export function createStage({ width = 1920, height = 1080, dofMax = 7 } = {}) {
   // ---------- vehicles ----------
   const vehAt = (v, T) => { let [x, z] = v.pos, h = v.heading ?? 0, dist = 0; for (let i = 0; i < (v.track ?? []).length; i++) { const s = v.track[i]; if (T < s.at) break; const dx = s.to[0] - x, dz = s.to[1] - z, L = Math.hypot(dx, dz), sp = s.speed ?? 2, ran = Math.min(T, v.track[i + 1]?.at ?? Infinity) - s.at, ease = Math.min(1, ran * sp / L), f = ease; x += dx * f; z += dz * f; dist += L * f; if (L > .01) h = Math.atan2(dx, dz); } return { x, z, h, dist }; };
   // ---------- actors ----------
-  function actorState(scene, a, T) { const k = (a.scale ?? 1) / UNIT; let [x, z] = a.pos, w = a.face ?? 0, camRel = a.facing, seg = { at: 0, move: a.move ?? 'idle' }, start = 0, y = null, prev = null, w0 = w, tw = -9, ride = a.ride ?? null, sit = a.sit ?? null; const setW = (nw, tc) => { if (Math.abs(((nw - w) + Math.PI * 3) % (Math.PI * 2) - Math.PI) > .001) { w0 = w; tw = tc; w = nw; } }, enter = (s, at) => { prev = { move: seg.move, local: at - start, overrides: seg.overrides }; seg = s.move ? s : { ...s, move: 'idle' }; start = at; }, tr = a.track ?? [];
+  function actorState(scene, a, T) { const k = (a.scale ?? 1) / UNIT; let [x, z] = a.pos, w = a.face ?? 0, camRel = a.facing, seg = { at: 0, move: a.move ?? 'idle' }, start = 0, y = null, prev = null, w0 = w, tw = -9, ride = a.ride ?? null, sit = a.sit ?? null; const setW = (nw, tc) => { if (Math.abs(((nw - w) + Math.PI * 3) % (Math.PI * 2) - Math.PI) > .001) { w0 = w; tw = tc; w = nw; } }, enter = (s, at) => { prev = { move: seg.move, local: at - start, overrides: seg.overrides }; seg = s.move ? (s.move === 'talk-mix' ? { ...s, move: pickTalk(a.spec, at) } : s) : { ...s, move: 'idle' }; start = at; }, tr = a.track ?? [];
     for (let i = 0; i < tr.length; i++) { const s = tr[i]; if (T < s.at) break; enter(s, s.at); ride = s.ride ?? (s.to ? null : ride); sit = s.sit ?? (s.to || s.climb ? null : sit); if (s.facing !== undefined) { camRel = s.facing; } if (s.face !== undefined) { camRel = undefined; setW(Array.isArray(s.face) ? Math.atan2(s.face[0] - x, s.face[1] - z) : s.face, s.at); }
       if (s.to) { camRel = undefined; const dx = s.to[0] - x, dz = s.to[1] - z, L = Math.hypot(dx, dz), v = groundSpeed(a.spec, MOVES[s.move]) * k, need = L / (v || 1), ran = Math.min(T, tr[i + 1]?.at ?? Infinity) - s.at; if (L > .001) setW(Math.atan2(dx, dz), s.at); if (ran >= need) { x = s.to[0]; z = s.to[1]; if (!s.then) enter({ ...s, move: s.after ?? 'idle', to: null }, s.at + need); } else { x += dx / L * v * ran; z += dz / L * v * ran; } }
       if (s.climb) { const ran = Math.min(T, tr[i + 1]?.at ?? Infinity) - s.at; y = Math.min(s.climb.to, s.climb.from + (s.climb.speed ?? .3) * ran); if (ran >= (s.climb.to - s.climb.from) / (s.climb.speed ?? .3)) enter({ ...s, move: s.after ?? 'idle', climb: null }, s.at + (s.climb.to - s.climb.from) / (s.climb.speed ?? .3)); } }

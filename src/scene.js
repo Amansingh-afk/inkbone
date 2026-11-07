@@ -6,7 +6,7 @@ import { drawSet, drawSetLight, drawForeground, FLOOR, THEMES, LIGHTS } from './
 import { applyCam, camAt, drawTransition } from './stage.js';
 import { drawAct, groundSpeed } from './act.js';
 import { DUETS, drawDuet } from './duets.js';
-import { MOVES } from './moves/index.js';
+import { MOVES, pickTalk } from './moves/index.js';
 import { FX } from './fx/index.js';
 import { FREE_PROPS, } from './props.js';
 import { setShadowTint } from './paint.js';
@@ -15,7 +15,7 @@ const SHADOW_TINT = { warm: '#54264a', ochre: '#54264a', cabin: '#3f2342', pink:
 export function actorState(actor, T) {
   let x = actor.x ?? 960, facing = actor.facing ?? .55, seg = { at: 0, move: 'idle' }, start = 0, from = null;
   const scale = actor.scale ?? 1.4, track = actor.track ?? [];
-  const enter = (next, at) => { from = at > 0 ? { move: seg.move, local: at - start, facing, overrides: seg.overrides ?? actor.overrides, from } : null; seg = next.move ? next : { ...next, move: 'idle' }; start = at; };
+  const enter = (next, at) => { from = at > 0 ? { move: seg.move, local: at - start, facing, overrides: seg.overrides ?? actor.overrides, from } : null; seg = next.move ? (next.move === 'talk-mix' ? { ...next, move: pickTalk(actor.spec, at) } : next) : { ...next, move: 'idle' }; start = at; };
   for (let i = 0; i < track.length; i++) {
     const s = track[i]; if (T < s.at) break;
     enter(s, s.at); if (s.facing !== undefined) facing = s.facing;
