@@ -32,6 +32,13 @@
     "examples",
     "AGENTS.md",
     "README.md",
-    ".claude-plugin"
-  ]
+    ".claude-plugin",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Amansingh-afk/inkbone.git"
+  },
+  "homepage": "https://github.com/Amansingh-afk/inkbone"
 }

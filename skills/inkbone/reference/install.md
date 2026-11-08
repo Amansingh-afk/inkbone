@@ -1,10 +1,10 @@
 # Using Inkbone from another project
 
-Inkbone is private. Projects depend on a tagged version of this repo, so engine work never changes a finished film.
+Projects depend on a tagged version of the repo, so engine work never changes a finished film.
 
 ```bash
 # in the project folder
-npm install git+file:///home/ricky/realm/sidechicks/cartoons/inkbone#v0.3.2
+npm install github:Amansingh-afk/inkbone#v0.3.2
 npx playwright-core install chromium      # once per machine, if missing
 npx inkbone list                          # works from the project
 npx inkbone render film.json
@@ -26,4 +26,4 @@ In the Inkbone repo, after `inkbone check` passes:
 
 ## The skill in Claude Code
 
-The repo is a Claude Code plugin (`.claude-plugin/plugin.json`, skill in `skills/inkbone`). Add it once with `/plugin`, choosing this folder as a local plugin source, or copy `skills/inkbone` into `~/.claude/skills/`. Other agents read `AGENTS.md` at the repo root.
+The repo is a Claude Code plugin (`.claude-plugin/plugin.json`, skill in `skills/inkbone`). Add it once with `/plugin`, pointing it at this repo or a local clone, or copy `skills/inkbone` into `~/.claude/skills/`. Other agents read `AGENTS.md` at the repo root.

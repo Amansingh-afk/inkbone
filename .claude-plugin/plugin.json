@@ -1,5 +1,7 @@
 {
   "name": "inkbone",
   "version": "0.3.2",
-  "description": "Flat vector cartoon animation: write a film as JSON, render stills, sheets and video with the inkbone CLI."
+  "description": "Flat vector cartoon animation: write a film as JSON, render stills, sheets and video with the inkbone CLI.",
+  "license": "MIT",
+  "repository": "https://github.com/Amansingh-afk/inkbone"
 }
