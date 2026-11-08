@@ -18,7 +18,7 @@ const clone = o => JSON.parse(JSON.stringify(o));
 export const WORLD_NAMES = ['flat', 'office', 'police-station', 'village', 'canal', 'market', 'chai-stall'];
 export const TIME_NAMES = ['day', 'sunset', 'night'];
 export const CAMERA3D_NAMES = ['hold', 'push-in', 'pull-out', 'orbit', 'crane-up', 'follow', 'whip', 'fly-through'];
-const OPTION_KEYS = ['seed', 'cast', 'style', 'bodyType', 'body', 'skin', 'hair', 'face', 'top', 'bottom', 'shoes', 'acc', 'head', 'earInner', 'muzzle', 'mane', 'beak', 'walk'];
+const OPTION_KEYS = ['seed', 'cast', 'style', 'bodyType', 'gender', 'body', 'skin', 'hair', 'face', 'top', 'bottom', 'shoes', 'acc', 'head', 'earInner', 'muzzle', 'mane', 'beak', 'walk'];
 
 // A character from a cast name, or { cast?, seed?, style?, ...createCharacter options }. Options on top of a cast name override it.
 export function resolveCharacter(c, filmStyle = null) {
@@ -67,7 +67,7 @@ export function validateFilm(film) {
   const castNames = Object.keys(CAST), moves = [...Object.keys(MOVES), 'talk-mix'], ids = new Set(Object.keys(f.characters ?? {}));
   const checkChar = (path, c) => { if (typeof c === 'string') return check(path, c, castNames, 'cast member'); if (!c || typeof c !== 'object') return out.push(`${path}: a character is a cast name or an options object`);
     for (const k of Object.keys(c)) if (!OPTION_KEYS.includes(k)) out.push(`${path}.${k}: unknown character option${near(k, OPTION_KEYS) ? ` (did you mean "${near(k, OPTION_KEYS)}"?)` : ''}`);
-    check(path + '.cast', c.cast, castNames, 'cast member'); check(path + '.style', c.style, ['round', 'stick'], 'style'); check(path + '.bodyType', c.bodyType, Object.keys(BODIES), 'body type'); check(path + '.head', c.head, HEADS, 'head');
+    check(path + '.cast', c.cast, castNames, 'cast member'); check(path + '.style', c.style, ['round', 'stick'], 'style'); check(path + '.bodyType', c.bodyType, Object.keys(BODIES), 'body type'); check(path + '.gender', c.gender, ['man', 'woman'], 'gender'); check(path + '.head', c.head, HEADS, 'head');
     check(path + '.top.type', c.top?.type, [...TOPS, 'none'], 'top'); check(path + '.bottom.type', c.bottom?.type, BOTTOMS, 'bottom'); check(path + '.shoes.type', c.shoes?.type, SHOES, 'shoes'); check(path + '.hair.style', c.hair?.style, [...HAIRSTYLES, ...HAIR_EXTRA, 'hijab'], 'hairstyle');
     check(path + '.face.eyes', c.face?.eyes, EYES, 'eye shape'); check(path + '.face.jaw', c.face?.jaw, JAWS, 'jaw'); check(path + '.face.nose', c.face?.nose, NOSES, 'nose'); check(path + '.face.facial', c.face?.facial, ['none', 'stubble', 'moustache', 'beard', 'longbeard', 'goatee'], 'facial hair');
     for (const a of c.acc ?? []) check(path + '.acc', a, [...HATS, 'glasses', 'shades', 'earrings', 'bindi', 'scarf', 'tie', 'watch', 'lanyard', 'collar'], 'accessory'); };

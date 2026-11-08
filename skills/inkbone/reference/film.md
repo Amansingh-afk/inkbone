@@ -26,6 +26,7 @@ A character is one of:
 |---|---|
 | `seed` | any number |
 | `style` | `round`, `stick` |
+| `gender` | `man` or `woman`. Picked from the seed if left out. Men never get a dress, sari, skirt or long-hair style by chance, women never get facial hair. Anything you name is still worn. |
 | `bodyType` | `bodies` in the catalog (`average`, `slim`, `stout`, `tall`, `short`, `broad`, `lanky`, `barrel`, `stocky`, `stubby`, `pear`) |
 | `skin` | a colour |
 | `head` | an animal head: `jackal`, `falcon`, `cat`, `dog`, `lion`, `bull`, `mummy`. Leave out for a person. Colours: `earInner`, `muzzle`, `mane`, `beak`. |

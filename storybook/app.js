@@ -6,8 +6,8 @@ import { HATS } from '../src/hats.js';
 import { makeFilm, validateFilm, WORLD_NAMES, CAMERA3D_NAMES } from '../src/film.js';
 const $ = s => document.querySelector(s), el = (t, p = {}, ...k) => { const e = Object.assign(document.createElement(t), p); e.append(...k); return e; };
 let P3 = null; const load3D = async () => (P3 ??= await import('../src/stage3d/preview.js'));
-const S = { page: 'cast', look: 'round', seed: 4, facing: .6, theme: 'warm', palette: '', bodyType: '', hair: '', top: '', time: 'day', q: '', tag: '' };
-const opts = (extra = {}) => { const o = {}; if (S.look !== 'round') o.style = S.look; if (S.bodyType) o.bodyType = S.bodyType; if (S.hair) o.hair = { style: S.hair }; if (S.top) o.top = { type: S.top }; return { ...o, ...extra }; };
+const S = { page: 'cast', look: 'round', seed: 4, facing: .6, theme: 'warm', palette: '', gender: '', bodyType: '', hair: '', top: '', time: 'day', q: '', tag: '' };
+const opts = (extra = {}) => { const o = {}; if (S.look !== 'round') o.style = S.look; if (S.gender) o.gender = S.gender; if (S.bodyType) o.bodyType = S.bodyType; if (S.hair) o.hair = { style: S.hair }; if (S.top) o.top = { type: S.top }; return { ...o, ...extra }; };
 const optStr = (o = opts()) => (Object.keys(o).length ? ', ' + JSON.stringify(o) : '');
 const styleStr = () => (S.look !== 'round' ? `, "style": "${S.look}"` : '');
 const cli = n => `node bin/inkbone.mjs ${n}`;
@@ -55,7 +55,7 @@ function controls(P) {
   const c = $('#controls'); c.textContent = ''; const want = P.controls ?? [];
   const field = (label, e) => el('label', {}, label, e), sel = (key, options, label, blank = 'any') => { const s = el('select'); s.append(new Option(blank, '')); for (const o of options) s.append(new Option(o, o)); s.value = S[key]; s.onchange = () => { S[key] = s.value; build(); }; return field(label, s); };
   if (want.includes('seed')) { const n = el('input', { type: 'number', value: S.seed }); n.onchange = () => { S.seed = +n.value; build(); }; const b = el('button', { textContent: 'Shuffle' }); b.onclick = () => { S.seed = 1 + Math.floor(Math.random() * 99999); build(); }; c.append(field('seed', n), b); }
-  if (want.includes('body')) c.append(sel('bodyType', Object.keys(BODIES), 'body'), sel('hair', HAIRSTYLES, 'hair'), sel('top', TOPS, 'outfit'));
+  if (want.includes('body')) c.append(sel('gender', ['man', 'woman'], 'gender'), sel('bodyType', Object.keys(BODIES), 'body'), sel('hair', HAIRSTYLES, 'hair'), sel('top', TOPS, 'outfit'));
   if (want.includes('palette')) c.append(sel('palette', Object.keys(PAL), 'palette', 'default'));
   if (want.includes('theme')) c.append(sel('theme', Object.keys(THEMES), 'theme', 'warm'));
   if (want.includes('time')) { const t = el('select'); for (const v of ['day', 'sunset', 'night']) t.append(new Option(v, v)); t.value = S.time; t.onchange = () => { S.time = t.value; build(); }; c.append(field('time', t)); }

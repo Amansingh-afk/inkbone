@@ -31,6 +31,13 @@ export const FACIALS = ['none', 'none', 'none', 'stubble', 'moustache', 'beard',
 export const ACCESSORIES = ['glasses', 'shades', 'cap', 'earrings', 'bindi', 'scarf', 'tie', 'watch', 'capback', 'lanyard'];
 export function comboCount() { return Object.keys(BODIES).length * SKINS.length * HAIRSTYLES.length * HAIR_COLORS.length * TOPS.length * CLOTH.length * BOTTOMS.length * CLOTH.length * SHOES.length * JAWS.length * NOSES.length * EYES.length * 4 * 2 ** ACCESSORIES.length; }
 
+// what a random man or woman can be given; anything can still be asked for by name
+export const GENDERS = ['man', 'woman'];
+const WOMEN_TOPS = ['dress', 'sari'];
+const EVERYDAY_TOPS = TOPS.filter(t => !['dress', 'sari', 'uniform', 'hivis', 'toga', 'pelt', 'tailcoat', 'wraps'].includes(t));
+const WOMEN_HAIR = ['bob', 'long', 'ponytail', 'bun', 'braid', 'pigtails'];
+const MEN_HAIR = ['crop', 'messy', 'spiky', 'swept', 'slick', 'sidepart', 'quiff', 'curly', 'afro'];
+const MEN_HAIR_ONLY = ['bald', 'combover'];
 export const STYLE_MAKERS = {}; // filled by src/styles
 export function createCharacter(seed = 1, o = {}) {
   const R = new Rng(seed * 2654435 + 11);
@@ -57,6 +64,21 @@ export function createCharacter(seed = 1, o = {}) {
   // an animal head (see animal.js) and its colours
   if (o.head) spec.head = o.head; for (const k of ['earInner', 'muzzle', 'mane', 'beak']) if (o[k]) spec[k] = o[k];
   if (spec.face.facial !== 'none' && !o.face?.facial && ['bob', 'long', 'ponytail', 'bun', 'braid', 'pigtails', 'hijab'].includes(hair.style)) spec.face.facial = 'none';
+  // Gender keeps a random character's outfit, hair and face together. Only fields the options left to the seed change.
+  // Its own random stream, so every other draw for a seed stays the same.
+  { const G = new Rng(seed * 7919 + 3);
+    spec.gender = o.gender ?? (o.top?.type && WOMEN_TOPS.includes(o.top.type) ? 'woman' : o.bottom?.type === 'skirt' ? 'woman' : o.face?.facial && o.face.facial !== 'none' ? 'man' : G.next() < .5 ? 'woman' : 'man');
+    const man = spec.gender === 'man';
+    if (man) {
+      if (!o.top?.type && WOMEN_TOPS.includes(spec.top.type)) spec.top.type = G.pick(EVERYDAY_TOPS);
+      if (!o.bottom?.type && spec.bottom.type === 'skirt') spec.bottom.type = 'pants';
+      if (!o.hair?.style && WOMEN_HAIR.includes(hair.style)) hair.style = G.pick(MEN_HAIR);
+      if (!o.acc) spec.acc = spec.acc.filter(a => a !== 'bindi' && a !== 'earrings');
+    } else {
+      if (!o.face?.facial) spec.face.facial = 'none';
+      if (!o.hair?.style && MEN_HAIR_ONLY.includes(hair.style)) hair.style = G.pick(WOMEN_HAIR);
+      if (!o.top?.type && G.next() < .15) spec.top.type = 'dress';
+    } }
   // Things that can't be worn together.
   if (spec.acc.includes('glasses') && spec.acc.includes('shades')) spec.acc = spec.acc.filter(a => a !== 'glasses');
   // retired items: an old spec asking for them gets the nearest thing still drawn
