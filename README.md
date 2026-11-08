@@ -13,6 +13,8 @@ Characters are flat 2D drawings on a real 3D skeleton, so they turn, walk and ac
 - 70 moves: walks, talking, gestures, reactions, fights, props, plus two-person moves like hugs and handshakes
 - 2D sets and 3D worlds with camera moves, lighting and time of day
 - Two styles: round and stickman
+- Vertical Shorts with `"size": "1080x1920"`, framed on whoever is talking
+- Dialogue lines that turn into captions, with the speakers acting them out
 - A dashboard to browse everything and try films live
 
 ## Quick start
@@ -78,7 +80,7 @@ Outputs land next to the film unless you pass `--out`.
 ## Use it in your project
 
 ```bash
-npm install github:Amansingh-afk/inkbone#v0.3.2
+npm install github:Amansingh-afk/inkbone#v0.4.0
 npx inkbone render film.json
 ```
 

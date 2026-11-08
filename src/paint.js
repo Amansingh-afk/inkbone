@@ -4,7 +4,7 @@ import { project as pr, rotY, rotX, add, sub } from './rig.js';
 import { resolveExpr } from './face.js';
 import { drawHat, HATS } from './hats.js';
 import { animalBehind, animalSkin, animalFront } from './animal.js';
-import { drawShoe, drawSlipperSole, drawSlipperStrap, drawToes, BOOT_SHIN } from './shoes.js';
+import { drawShoe, drawSlipperSole, drawSlipperStrap, drawToes, BOOT_SHIN, bootShaft } from './shoes.js';
 import { drawHairFront, drawBackLocks, drawBackHair, drawHijabDrape, HAIR } from './hair.js';
 const { sin, cos, hypot, atan2, PI, abs, max, min } = Math;
 let SHADOW = '#2a1c3e'; // scenes tint the shadows to match their light
@@ -107,7 +107,7 @@ export function ringsOf(spec, sk, hemDown = .08) {
   const b = spec.body, bl = b.belly, F = (c, yaw, f, y = 0) => add(c, rotY([0, y, f], yaw));
   const w = (rx, rz, y) => hypot(rx * cos(y), rz * sin(y));
   const R = (c, y, rx, rz, f) => { const p = pr(F(c, y, f)); return { c: p, w: w(rx, rz, y) }; };
-  return {
+  const out = {
     hem: R(add(sk.pelvis, sk.hipF([0, -b.torso * hemDown, 0])), sk.hipYaw, b.hip * 1.04, b.hip * .9, -2),
     hip: R(sk.pelvis, sk.hipYaw, b.hip, b.hip * .92 + bl * 6, -2),
     waist: R(sk.waist, sk.midYaw, lerp(b.hip, b.shoulder, .45) * (.9 + bl * .28), (30 + bl * 24), bl * 17),
@@ -115,6 +115,9 @@ export function ringsOf(spec, sk, hemDown = .08) {
     sh: R(add(sk.chest, sk.chF([0, b.torso * .14, 0])), sk.chestYaw, b.shoulder + b.armR * .55, 28, 0),
     neck: R(sk.neckBase, sk.chestYaw, b.headR * .3, b.headR * .26, 0),
   };
+  // the slope from the shoulder up to the neck, so the top of every garment curves instead of ending in a square corner
+  out.sh.round = b.armR * 1.6 + 8;
+  return out;
 }
 export function torsoPoly(list) {
   const L = [], Rr = [];
@@ -122,7 +125,10 @@ export function torsoPoly(list) {
     const a = list[Math.max(0, i - 1)].c, c = list[Math.min(list.length - 1, i + 1)].c, end = i === 0, dx = end ? 0 : c[0] - a[0], dy = end ? -1 : c[1] - a[1], d = hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d, r = list[i];
     L.push([r.c[0] + nx * r.w, r.c[1] + ny * r.w]); Rr.push([r.c[0] - nx * r.w, r.c[1] - ny * r.w]);
   }
-  return [...L, ...Rr.reverse()];
+  // a ring with round: d turns its corner into a curve of about that radius (the shoulders), so no garment has a square corner
+  const curve = (arr, i, d0) => { const P = arr[i], A = arr[i - 1], B = arr[i + 1], la = hypot(A[0] - P[0], A[1] - P[1]) || 1, lb = hypot(B[0] - P[0], B[1] - P[1]) || 1, d = Math.min(d0, la * .6, lb * .7), p0 = [P[0] + (A[0] - P[0]) / la * d, P[1] + (A[1] - P[1]) / la * d], p2 = [P[0] + (B[0] - P[0]) / lb * d, P[1] + (B[1] - P[1]) / lb * d]; return [0, .2, .4, .6, .8, 1].map(t => [(1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * P[0] + t * t * p2[0], (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * P[1] + t * t * p2[1]]); };
+  const out = (arr) => arr.flatMap((p, i) => (list[i].round && i > 0 && i < arr.length - 1 ? curve(arr, i, list[i].round) : [p]));
+  return [...out(L), ...out(Rr).reverse()];
 }
 // Densify so the smoothing doesn't collapse straight runs.
 export function dense(poly, n = 3) { const o = []; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; for (let k = 0; k < n; k++) o.push([lerp(a[0], b[0], k / n), lerp(a[1], b[1], k / n)]); } return o; }
@@ -506,6 +512,7 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
       if (B.type === 'dhoti') ink.blob([calf], spec.skin, { shade: shadeOf(spec.skin) });
       if (spec.top.type !== 'dress' && B.type !== 'skirt' && B.type !== 'kilt' && !(TOP[spec.top.type]?.skirt > .9)) {
         const ty = B.type, fit = ty === 'dhoti' ? u => 1.55 + .7 * u ** .8 : ty === 'wide' ? u => 1.1 + 1.05 * u ** 1.5 : ty === 'joggers' ? u => 1.12 - .14 * u : ty === 'cargo' ? u => 1.14 + .06 * u : u => 1.04 + .2 * u ** 3, fl = tb.r.map((r, i, all) => r * fit(i / (all.length - 1))), end = cut({ pts: tb.pts, r: fl }, tucked ? 1 - b.shin * (BOOT_SHIN - .1) / (b.thigh + b.shin) : ty === 'joggers' ? .96 : ty === 'dhoti' ? .9 : .985), T = boilTube(ink, end, seed + s * 13), cc = B.color, dk = darken(cc, .42);
+        if (tucked) { const n = T.r.length, sr = bootShaft(spec) * 1.04; T.r = T.r.map((r, i) => { const u = i / (n - 1), k = smooth(clamp((u - .72) / .28)); return lerp(r, sr, k) * (1 + .07 * Math.sin(clamp((u - .6) / .3) * Math.PI)); }); } // tucked: the leg blouses a little, then narrows into the boot top
         hemTube(ink, T, cc);
         if (ty === 'wraps') wrapLines(ink, T, darken(cc, .42));
         jointFolds(ink, h, k, a, b.legR * .9, dk);

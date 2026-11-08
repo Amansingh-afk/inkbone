@@ -1,0 +1,17 @@
+{
+  "mode": "2d",
+  "size": "1080x1920",
+  "characters": { "zeus": "zeus", "pup": "dogman" },
+  "scenes": [
+    { "set": "kitchen", "theme": "mint", "dur": 9, "cam": { "x": 960, "y": 600, "z": 1.15 },
+      "actors": [
+        { "who": "zeus", "x": 760, "y": 940, "scale": 1.3, "track": [{ "at": 0, "move": "idle", "facing": 0.6 }] },
+        { "who": "pup", "x": 1160, "y": 940, "scale": 1.3, "track": [{ "at": 0, "move": "idle", "facing": -0.6 }] }
+      ],
+      "lines": [
+        { "who": "zeus", "text": "I am the king of the gods." },
+        { "who": "pup", "text": "Cool. Can you fix the fridge?" },
+        { "who": "zeus", "text": "...I can throw lightning at it." }
+      ] }
+  ]
+}

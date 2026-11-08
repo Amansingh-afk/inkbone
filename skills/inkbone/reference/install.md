@@ -4,7 +4,7 @@ Projects depend on a tagged version of the repo, so engine work never changes a 
 
 ```bash
 # in the project folder
-npm install github:Amansingh-afk/inkbone#v0.3.2
+npm install github:Amansingh-afk/inkbone#v0.4.0
 npx playwright-core install chromium      # once per machine, if missing
 npx inkbone list                          # works from the project
 npx inkbone render film.json
@@ -14,7 +14,7 @@ Code can also import it: `import { createCharacter, CAST } from 'inkbone'`, and 
 
 ## Updating a project
 
-Change the tag in the project's `package.json` (`#v0.3.2` to the new one) and run `npm install`. Render a still of a scene you know before and after, and compare.
+Change the tag in the project's `package.json` (`#v0.4.0` to the new one) and run `npm install`. Render a still of a scene you know before and after, and compare.
 
 ## Releasing a version
 

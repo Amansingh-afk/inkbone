@@ -50,6 +50,8 @@ Outputs go beside the film unless `--out` says otherwise. `--size 1280x720` rend
 - **3D** (`"mode": "3d"`): a `world` with a `time` of day and `cam` shots. Actors have `pos: [x, z]` in metres. The CLI gives it a GPU; `--gpu soft` if there is none.
 - **Tracks** are what an actor does over time: `{ "at": 2, "move": "wave", "facing": 0.5 }`. Add `"to"` to walk somewhere at the speed the feet move. `"talk-mix"` picks a different talking gesture per line.
 - **Facing:** 0 faces us, 1.57 faces screen right, -1.57 screen left, 3.14 shows the back.
+- **Dialogue:** a scene's `lines` (`[{ "who": "zeus", "text": "..." }]`) become captions, and speakers act out their lines on their own. Timing comes from the word count unless you give `at`.
+- **Shorts:** `"size": "1080x1920"` makes a vertical film. 2D frames whoever is speaking; 3D renders tall directly. See `examples/short.json`.
 
 Every field is in `reference/film.md`. Every name (moves, cast, heads, outfits, hats, sets, worlds, cameras, effects) is in `reference/catalog.md`, or run `inkbone list`.
 

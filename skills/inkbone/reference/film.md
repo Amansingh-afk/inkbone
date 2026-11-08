@@ -7,10 +7,11 @@
 | field | meaning |
 |---|---|
 | `mode` | `"2d"` (flat sets) or `"3d"` (3D worlds). Defaults to 3d if any scene has a `world`. |
-| `size` | `"1920x1080"` by default. Smaller renders faster. |
+| `size` | `"1920x1080"` by default. Smaller renders faster. `"1080x1920"` makes a vertical Short: 2D draws a full-height slice of the stage that follows whoever is speaking (pin it with `scene.frame: { "x": 960 }`, in stage pixels); 3D renders the tall frame directly. |
 | `fps` | 24 by default. |
 | `style` | `"round"` (default) or `"stick"`, for every character unless one says otherwise. |
 | `characters` | `{ id: character }`. Actors refer to these with `"who"`. |
+| `captions` | `true` by default when scenes have lines. `false` turns them off, or `{ "size": 1.2, "y": 0.8, "highlight": "#f4c542" }` to adjust (y is a share of the height). |
 | `scenes` | played end to end. A file with no `scenes` list is one scene. |
 
 ## Characters
@@ -47,6 +48,22 @@ A character is one of:
 - Segment fields: `move`, `facing` (0 faces us, 1.57 screen right, -1.57 screen left, 3.14 back), `to` (walk there at the speed the feet move, then stop; leave time to arrive), `expr` (an expression), `overrides` (any pose field).
 - `"move": "talk-mix"` picks one talking gesture per segment, the same each render. `talk-wag` is angry and only used by name.
 - Duets: `{ "at": 1, "duet": "handshake", "with": "otherId" }` on one actor; the partner joins for its length. In 2D give actors an `id` (or use `who`, which counts as one).
+
+## Lines (dialogue)
+
+Any scene, 2D or 3D, can carry what people say:
+
+```json
+"lines": [
+  { "who": "zeus", "text": "I am the king of the gods." },
+  { "who": "pup", "text": "Cool. Can you fix the fridge?", "at": 3.2, "dur": 2 }
+]
+```
+
+- `who` is an actor in the scene (its `who` or `id`). `at` and `dur` are optional: a line with no `at` follows the one before, and its length comes from its word count.
+- Lines are burned in as captions, with the word being said picked out.
+- Speakers switch to a talking gesture (`talk-mix`) for their line, and anyone idling listens. Walks, duets and moves you chose are left alone. Set `"autoTalk": false` on an actor to stop this.
+- No audio is made. Pair the film with your own voice track timed to `at`.
 
 ## 2D scenes
 

@@ -19,7 +19,7 @@ export const SKINS = ['#fbd9bc', '#f3c49c', '#e6ad80', '#d8976a', '#c58355', '#a
 export const HAIR_COLORS = ['#1e1a2b', '#3a2a2a', '#5c3a26', '#8a5a2c', '#c98b3a', '#e8c66a', '#b7b4bd', '#e9e6ea', '#b84a2e', '#3d6fd0', '#d3589c'];
 export const CLOTH = ['#6f9fd0', '#3f5f8f', '#e8574f', '#f08a3c', '#f4c542', '#7cb342', '#2f9e8f', '#3a86d8', '#5a5fd0', '#9256c9', '#d9568f', '#f2ece0', '#39394a', '#6d7a8a', '#8a6242', '#c7a77a', '#1f6f5c', '#a0303f', '#5c7a3a', '#274a7a'];
 // picked by name only, never at random, so existing seeds keep their hair
-export const HAIR_EXTRA = ['wild', 'swoop'];
+export const HAIR_EXTRA = ['wild', 'swoop', 'textured', 'buzz', 'curtains', 'mullet', 'manbun', 'twists', 'locs', 'pixie', 'shag', 'highpony', 'anime', 'electric'];
 export const HAIRSTYLES = ['crop', 'messy', 'spiky', 'swept', 'slick', 'sidepart', 'quiff', 'curly', 'afro', 'combover', 'bald', 'long', 'bob', 'ponytail', 'bun', 'braid', 'pigtails'];
 export const TOPS = ['tee', 'graphic', 'stripes', 'shirt', 'hoodie', 'sweater', 'jacket', 'bomber', 'puffer', 'kurta', 'nehru', 'blazer', 'vest', 'labcoat', 'dress', 'sari', 'uniform', 'hivis', 'toga', 'pelt', 'tailcoat', 'wraps'];
 export const BOTTOMS = ['pants', 'jeans', 'joggers', 'cargo', 'wide', 'dhoti', 'shorts', 'skirt', 'kilt', 'wraps'];

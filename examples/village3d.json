@@ -1,13 +1,72 @@
 {
   "mode": "3d",
   "size": "1280x720",
-  "characters": { "pharaoh": "pharaoh", "anubis": "anubis" },
+  "characters": {
+    "pharaoh": "pharaoh",
+    "anubis": "anubis"
+  },
   "scenes": [
-    { "world": "village", "time": "sunset", "seed": 5, "dur": 4,
-      "cam": [{ "at": 0, "dur": 4, "move": "orbit", "target": [0, 0.5, 1.4], "dist": 4, "from": -0.5, "to": 0.5, "height": 0.3 }],
+    {
+      "world": "village",
+      "time": "sunset",
+      "seed": 5,
+      "dur": 4,
+      "cam": [
+        {
+          "at": 0,
+          "dur": 4,
+          "move": "orbit",
+          "target": [
+            0,
+            0.5,
+            1.4
+          ],
+          "dist": 4,
+          "from": -0.5,
+          "to": 0.5,
+          "height": 0.3
+        }
+      ],
       "actors": [
-        { "who": "pharaoh", "pos": [-0.6, 1.4], "track": [{ "at": 0, "move": "talk", "facing": 0.5 }] },
-        { "who": "anubis", "pos": [0.7, 1.5], "track": [{ "at": 0, "move": "listen", "facing": -0.5 }] }
-      ] }
+        {
+          "who": "pharaoh",
+          "pos": [
+            -0.6,
+            1.4
+          ],
+          "track": [
+            {
+              "at": 0,
+              "move": "talk",
+              "facing": 0.5
+            }
+          ]
+        },
+        {
+          "who": "anubis",
+          "pos": [
+            0.7,
+            1.5
+          ],
+          "track": [
+            {
+              "at": 0,
+              "move": "listen",
+              "facing": -0.5
+            }
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "who": "pharaoh",
+          "text": "Who moved my pyramid?"
+        },
+        {
+          "who": "anubis",
+          "text": "Not me. I was napping."
+        }
+      ]
+    }
   ]
 }
