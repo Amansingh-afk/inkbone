@@ -31,6 +31,9 @@ const hex = c => '#' + c.map(v => Math.round(clamp(v, 0, 255)).toString(16).padS
 export const mix = (a, b, f) => { const A = rgb(a), B = rgb(b); return hex(A.map((v, i) => lerp(v, B[i], f))); };
 export const darken = (c, f = .2, ink = '#2a1c3e') => mix(c, ink, f);
 export const lighten = (c, f = .2) => mix(c, '#ffffff', f);
+export const luma = c => { const [r, g, b] = rgb(c); return (r * .299 + g * .587 + b * .114) / 255; };
+// A rim of key light reads on dark colours and barely shows on pale ones, so dark skin and dark cloth get more of it.
+const rimLift = c => .55 + (1 - luma(c)) * 1.1;
 export function ramp(list, n) { const out = []; for (let i = 0; i < n; i++) { const u = n === 1 ? 0 : i / (n - 1) * (list.length - 1), k = Math.min(list.length - 2, Math.floor(u)); out.push(list.length === 1 ? list[0] : mix(list[k], list[k + 1], u - k)); } return out; }
 export const PAL = {
   fire: ['#7a1f2b', '#d9412b', '#f58a23', '#ffc93c', '#fff4c2'], smoke: ['#4c4658', '#7b7488', '#a9a3b2', '#d5d0d8', '#f2eff0'],
@@ -44,7 +47,7 @@ export const PAL = {
 // ---------- Ink: every shape goes through here so line weight and boil stay consistent ----------
 export class Ink {
   constructor(ctx, { t = 0, scale = 1, boil = 1, lw = 6, ink = '#221733', light = [-.55, -.8] } = {}) {
-    Object.assign(this, { ctx, t, sc: scale, boilAmp: boil, lw, inkColor: ink, light, n: 0, stack: [], weight: 1 });
+    Object.assign(this, { ctx, t, sc: scale, boilAmp: boil, lw, inkColor: ink, light, n: 0, stack: [], weight: 1, innerK: .62, form: null, rim: 0, rimK: .22, key: '#fff1d0', swell: .38, castC: null });
     this.bf = Math.floor(t * 8) % 3; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   }
   // Scale and translate together, keeping line weight constant on screen.
@@ -85,35 +88,55 @@ export class Ink {
     c.strokeStyle = color ?? this.inkColor; c.lineWidth = w; c.stroke(path); if (this.even) return;
     c.save(); c.translate(-this.light[0] * d, -this.light[1] * d); c.lineWidth = w * .82; c.stroke(path); c.restore();
   }
-  // shape(points, { fill, shade, shadeBy, hi, lw, stroke, alpha, hard, seed })
+  // shape(points, { fill, shade, shadeBy, lw, stroke, alpha, hard, seed, inner, rim, form })
+  // form: false keeps the plain shifted shade on a shape that isn't a solid form (a hair cap, whose lower edge is the hairline)
+  // inner: a detail line on top of another shape (pocket, cuff, panel), drawn lighter and even, so the silhouette stays the heaviest line.
   shape(pts, o = {}) {
     const c = this.ctx, path = this.path(pts, { closed: true, hard: o.hard, seed: o.seed });
     if (o.alpha != null) { c.save(); c.globalAlpha = o.alpha; }
-    const w = (o.lw ?? this.lw) * this.weight / this.sc, weighted = o.fill && o.stroke !== false && !this.even && !o.even;
+    // a shape given a thin lw (under about half the ink's) is a detail too: an even line, no swell
+    const inner = o.inner || (o.lw != null && o.lw < this.lw * .55), w = (o.lw ?? this.lw) * this.weight / this.sc * (o.inner ? this.innerK : inner ? .9 : 1), weighted = o.fill && o.stroke !== false && !this.even && !o.even && !inner;
     if (weighted) { c.save(); c.translate(-this.light[0] * w * .4, -this.light[1] * w * .4); c.strokeStyle = o.ink ?? this.inkColor; c.lineWidth = w * .95; c.stroke(path); c.restore(); } // heavier on the side away from the light; the fill hides the inner half
     if (o.fill) {
       c.fillStyle = o.fill; c.fill(path);
-      if (o.shade) { // hard-edged core shadow: dark everywhere, then the lit shape shifted toward the light
-        const by = o.shadeBy ?? 12; c.save(); c.clip(path); c.fillStyle = o.shade; c.fill(path);
-        c.translate(this.light[0] * by, this.light[1] * by); c.fillStyle = o.fill; c.fill(path); c.restore();
-      }
+      if (o.shade) this.cel(path, pts, o.fill, o.shade, o.shadeBy ?? 12, o.rim, o.form);
     }
-    if (weighted) { c.strokeStyle = o.ink ?? this.inkColor; c.lineWidth = w * .6; c.stroke(path); } else if (o.stroke !== false) this.stroke(path, o.lw, o.ink);
+    if (weighted) { c.strokeStyle = o.ink ?? this.inkColor; c.lineWidth = w * .6; c.stroke(path); } else if (inner && o.stroke !== false) { c.strokeStyle = o.ink ?? this.inkColor; c.lineWidth = w; c.stroke(path); } else if (o.stroke !== false) this.stroke(path, o.lw, o.ink);
     if (o.alpha != null) c.restore();
     return path;
   }
+  // Two-tone cel shade inside a filled path. Plain: the lit shape shifted toward the light, leaving a crescent of shade on the far side.
+  // With ink.form on (characters), the lit shape is also grown about the shape's centre, so the terminator is flatter than the outline and turns
+  // round the form like the core shadow on a cylinder or ball; the band is at least a share of the form's width, and a thin rim of key light runs on the lit edge.
+  cel(path, pts, fill, shade, by, rim, form) {
+    const c = this.ctx, L = this.light; c.save(); c.clip(path); c.fillStyle = shade; c.fill(path);
+    if (!this.form || form === false) { c.translate(L[0] * by, L[1] * by); c.fillStyle = fill; c.fill(path); c.restore(); return; }
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const q of pts) { if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; }
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = (x1 - x0) / 2, ry = (y1 - y0) / 2, F = this.form, d = Math.max(by, Math.min(rx, ry) * F.band), gx = 1 + F.grow * (rx > ry ? 1 : .55), gy = 1 + F.grow * (ry > rx ? 1 : .55);
+    // shift so the far edge of the grown lit shape sits d inside the outline
+    const sx = L[0] * (d + (gx - 1) * rx), sy = L[1] * (d + (gy - 1) * ry);
+    c.save(); c.translate(cx + sx, cy + sy); c.scale(gx, gy); c.translate(-cx, -cy); c.fillStyle = fill; c.fill(path); c.restore();
+    if (rim !== false && this.rim) { const rw = this.rim / this.sc + this.lw * this.weight / this.sc * .3, m = new Path2D(); m.rect(x0 - 999, y0 - 999, x1 - x0 + 1998, y1 - y0 + 1998); m.addPath(path, new DOMMatrix([1, 0, 0, 1, -L[0] * rw, -L[1] * rw])); c.clip(m, 'evenodd'); c.fillStyle = mix(fill, this.key, this.rimK * rimLift(fill)); c.fill(path); }
+    c.restore();
+  }
   line(pts, o = {}) {
     if (o.hard || o.even || pts.length < 3) { const p = this.path(pts, { closed: false, hard: o.hard, seed: o.seed }); this.stroke(p, o.lw ?? this.lw * .75, o.color); return p; }
-    // Brush line: thick in the middle, tapering to both ends.
+    // Brush line: thick in the middle, tapering to both ends, and fuller on the side away from the light.
     const q = this.boil(pts, false, o.seed ?? (++this.n * 7919)), dense = []; for (let i = 0; i < q.length - 1; i++) for (let k = 0; k < 4; k++) { const f = k / 4; dense.push([lerp(q[i][0], q[i + 1][0], f), lerp(q[i][1], q[i + 1][1], f)]); } dense.push(q[q.length - 1]);
     const n = dense.length - 1, w = (o.lw ?? this.lw * .75) * this.weight / this.sc * .62, L = [], R = [];
-    for (let i = 0; i <= n; i++) { const a = dense[Math.max(0, i - 1)], b = dense[Math.min(n, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], d = Math.hypot(dx, dy) || 1, u = i / n, hw = w * Math.max(.14, Math.sin(u * Math.PI) ** .55); L.push([dense[i][0] - dy / d * hw, dense[i][1] + dx / d * hw]); R.push([dense[i][0] + dy / d * hw, dense[i][1] - dx / d * hw]); }
+    for (let i = 0; i <= n; i++) { const a = dense[Math.max(0, i - 1)], b = dense[Math.min(n, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], d = Math.hypot(dx, dy) || 1, u = i / n, hw = w * Math.max(.14, Math.sin(u * Math.PI) ** .55), sw = this.swell * ((dy * this.light[0] - dx * this.light[1]) / d); L.push([dense[i][0] - dy / d * hw * (1 + sw), dense[i][1] + dx / d * hw * (1 + sw)]); R.push([dense[i][0] + dy / d * hw * (1 - sw), dense[i][1] - dx / d * hw * (1 - sw)]); }
     const c = this.ctx, p = new Path2D(); p.moveTo(L[0][0], L[0][1]); for (let i = 1; i <= n; i++) p.lineTo(L[i][0], L[i][1]); for (let i = n; i >= 0; i--) p.lineTo(R[i][0], R[i][1]); p.closePath(); c.fillStyle = o.color ?? this.inkColor; c.fill(p); return p;
+  }
+  // Cast shadow: one caster path, pushed by (dx, dy), multiplied onto what is already drawn inside every clip path, so details under it darken and stay.
+  // Only drawn while a character is being painted (ink.castC is set then). The caster is filled once, so overlapping parts never stack darker.
+  cast(clips, caster, dx, dy) {
+    if (!this.castC || !caster) return; const c = this.ctx; c.save(); for (const q of clips) if (q) c.clip(q);
+    c.globalCompositeOperation = 'multiply'; c.translate(dx, dy); c.fillStyle = this.castC; c.fill(caster); c.restore();
   }
   ell(cx, cy, rx, ry, o, rot = 0) { return this.shape(ellipse(cx, cy, rx, ry, 28, rot), o); }
   // Union of round-capped strokes with one outline around the whole thing, so parts merge without seams.
   // items: [{ pts:[[x,y]...], r:[...radii per point] | number }]
-  blob(items, fill, { shade, lw, ink } = {}) {
+  blob(items, fill, { shade, lw, ink, rim } = {}) {
     const c = this.ctx, w = (lw ?? this.lw) * this.weight / this.sc, sd = this.light;
     const pass = (color, grow, dx = 0, dy = 0) => {
       c.strokeStyle = color;
@@ -128,8 +151,14 @@ export class Ink {
       }
     };
     if (w > 0) { pass(ink ?? this.inkColor, w * .46, -sd[0] * w * .3, -sd[1] * w * .3); pass(ink ?? this.inkColor, w * .3); }
-    pass(shade ?? fill, 0);
-    if (shade) { const by = (Array.isArray(items[0].r) ? items[0].r[0] : items[0].r) * .3; pass(fill, -by * .85, sd[0] * by, sd[1] * by); }
+    if (!shade) { pass(fill, 0); return; }
+    const r0 = Array.isArray(items[0].r) ? items[0].r[0] : items[0].r;
+    if (!this.form) { pass(shade, 0); const by = r0 * .3; pass(fill, -by * .85, sd[0] * by, sd[1] * by); return; }
+    // cel shade on a tube: the terminator runs along the limb, a band about a third of its width; a rim of key light on the lit edge
+    const by = r0 * this.form.tube, rw = this.rim && rim !== false ? this.rim / this.sc * .8 + w * .3 : 0;
+    if (rw) pass(mix(fill, this.key, this.rimK * rimLift(fill)), 0);
+    pass(shade, -rw / 2, -sd[0] * rw / 2, -sd[1] * rw / 2);
+    pass(fill, -by * .85 - rw - by * .15, sd[0] * by, sd[1] * by);
   }
   boilLine(P, seed) { return this.boil(P, false, seed); }
 }
