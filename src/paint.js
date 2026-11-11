@@ -31,6 +31,15 @@ export function cut(tube, u) {
   }
   return { pts, r };
 }
+// A tube's outline as one closed path with round ends, for casting its shadow.
+export function tubePath(tb, grow = 1) {
+  const P = tb.pts, n = P.length, L = [], Rr = [], R = i => tb.r[i] * grow; if (n < 2) return null;
+  for (let i = 0; i < n; i++) { const a = P[max(0, i - 1)], b = P[min(n - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], d = hypot(dx, dy) || 1; L.push([P[i][0] - dy / d * R(i), P[i][1] + dx / d * R(i)]); Rr.push([P[i][0] + dy / d * R(i), P[i][1] - dx / d * R(i)]); }
+  const cap = (i, j, k) => { const q = P[i], a0 = atan2(j[1] - q[1], j[0] - q[0]), out = []; for (let s = 1; s < 8; s++) { const a = a0 + PI * s / 8 * k; out.push([q[0] + cos(a) * R(i), q[1] + sin(a) * R(i)]); } return out; };
+  // L is the left side (+90 degrees from the direction of travel), so both caps turn clockwise: over the tip, then round the base
+  const R0 = Rr[0], pts = [...L, ...cap(n - 1, L[n - 1], -1), ...[...Rr].reverse(), ...cap(0, R0, -1)];
+  const p = new Path2D(); pts.forEach((q, i) => (i ? p.lineTo(q[0], q[1]) : p.moveTo(q[0], q[1]))); p.closePath(); return p;
+}
 const boilTube = (ink, tb, seed) => { const k = ink.boilAmp; ink.boilAmp = k * .55; const pts = ink.boil(tb.pts, false, seed); ink.boilAmp = k; return { pts, r: tb.r }; };
 
 // ---------- hands ----------
@@ -157,7 +166,8 @@ function garmentLevels(spec, sk) {
 function surface(spec, sk, back) { const L = garmentLevels(spec, sk), sg = back ? -1 : 1; return (lv, f, down = 0) => { const [c, rx, rz, y] = L[lv], g = clamp(f, -1, 1); return pr(add(c, rotY([f * rx * sg, -down, sg * rz * Math.sqrt(1 - g * g)], y))); }; }
 const crew = (ink, S, skinC, wide = 1.1, line = 3.6) => { const pts = []; for (let i = 0; i <= 8; i++) { const a = PI * i / 8; pts.push(S('neck', cos(a) * wide, sin(a) * 11 - 2)); } ink.shape(pts, { fill: skinC, stroke: false }); ink.line(pts, { lw: line, even: 1 }); };
 const dot = (ink, p, r, fill) => ink.ell(p[0], p[1], r, r, { fill, stroke: false });
-const seam = (ink, pts, col, lw = 2.6) => ink.line(pts, { lw, color: col, even: 1 });
+// brush seams taper at both ends
+const seam = (ink, pts, col, lw = 2.6) => ink.line(pts, { lw: lw * 1.15, color: col });
 function pocket(ink, S, lv, f, down, w, h, col, ink2, flap = true) { const a = S(lv, f - w, down), b0 = S(lv, f + w, down), c = S(lv, f + w, down + h), d = S(lv, f - w, down + h), m = S(lv, f, down + h * 1.16); ink.shape([a, b0, c, m, d], { fill: col, lw: 2.6, hard: true }); if (flap) { const e = S(lv, f - w * 1.08, down - 1), g = S(lv, f + w * 1.08, down - 1), i = S(lv, f + w * 1.04, down + h * .34), j = S(lv, f, down + h * .46), k = S(lv, f - w * 1.04, down + h * .34); ink.shape([e, g, i, j, k], { fill: lighten(col, .1), lw: 2.6, hard: true }); dot(ink, S(lv, f, down + h * .26), 2.2, ink2); } }
 export function detailsFront(ink, spec, sk, rg, col, path) {
   const b = spec.body, yaw = sk.chestYaw, cy = cos(yaw), t = spec.top, type = t.type, ac = t.accent, inner = t.inner ?? '#f5f1e6', skin = spec.skin, dark = darken(col, .42), C = ink.ctx; if (cy < (WRAPS.includes(type) ? -.1 : .25)) return;
@@ -470,7 +480,39 @@ function hatsOverHair(ink, spec, sk, pose) { const c = pr(sk.head); ink.push(c[0
 
 // ---------- whole character ----------
 // arms: { only: 'L' } draws just that arm, { skip: 'L' } everything but it, so two people can wrap round each other.
-export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, arms = null } = {}) {
+// The silhouette is the heaviest line: the character is painted on its own layer, then laid down over a grown copy of its own shape in ink,
+// grown further on the side away from the light. Lines inside (overlaps, joints, folds) keep their lighter part weight, so a pile of parts doesn't read as a sticker.
+// Knobs on the Ink: sil (extra outer weight, in line widths; 0 turns it off), silSwell (extra on the shadow side), form/rim (cel shading, see core.js).
+export const FORM = { band: .27, grow: .14, tube: .22 };
+let LAYER = null, TINT = null;
+// scratch canvases only ever grow (in steps of 256), so they aren't reallocated for every figure
+const scratch = (cv, w, h) => { if (!cv) cv = typeof document !== 'undefined' ? document.createElement('canvas') : new OffscreenCanvas(1, 1); if (cv.width < w || cv.height < h) { cv.width = max(cv.width, Math.ceil(w / 256) * 256); cv.height = max(cv.height, Math.ceil(h / 256) * 256); } return cv; };
+export function paintCharacter(ink, spec, sk, o = {}) {
+  const keep = [ink.form, ink.rim], c = ink.ctx, cv = c.canvas;
+  const keepW = [ink.weight, ink.castC]; ink.form = ink.form ?? FORM; ink.rim = ink.rim || 2.2; ink.castC = mix('#ffffff', SHADOW, .3);
+  const sil = ink.sil ?? .4, M = c.getTransform(), S = Math.hypot(M.a, M.b), px = ink.lw * ink.weight * S / ink.sc, r = px * sil, e = px * (ink.silSwell ?? .2);
+  const done = () => { [ink.form, ink.rim] = keep; [ink.weight, ink.castC] = keepW; };
+  if (!cv || !(r > .4) || o.arms?.only) { paintBody(ink, spec, sk, o); done(); return; }
+  // screen box round the figure, padded for hair, hats and held props
+  const pts = [sk.head, sk.L.h, sk.R.h, sk.lf.a, sk.rf.a, sk.pelvis, sk.L.e, sk.R.e].map(pr); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const q of pts) { const X = M.a * q[0] + M.c * q[1] + M.e, Y = M.b * q[0] + M.d * q[1] + M.f; x0 = min(x0, X); x1 = max(x1, X); y0 = min(y0, Y); y1 = max(y1, Y); }
+  // hats and hair reach up to about two head radii over the head point; a held prop, a spin or a squash can reach anywhere near the figure, so those get a wide margin
+  const R = spec.body.headR * S, pp = sk.p ?? {}, wide = o.hold && Object.keys(o.hold).length || pp.spin || pp.sq ? (y1 - y0) * .6 + R * 2 : 0, ln = r * 4 + e * 2, padX = R * 1.5 + ln + wide, padUp = R * 2.3 + ln + wide, padDn = R * 1.1 + ln + wide;
+  x0 = max(0, Math.floor(x0 - padX)); y0 = max(0, Math.floor(y0 - padUp)); x1 = min(cv.width, Math.ceil(x1 + padX)); y1 = min(cv.height, Math.ceil(y1 + padDn));
+  if (x1 - x0 < 2 || y1 - y0 < 2) { done(); return; }
+  const bw = x1 - x0, bh = y1 - y0, L = LAYER = scratch(LAYER, bw, bh), lc = L.getContext('2d', { willReadFrequently: true }); lc.setTransform(1, 0, 0, 1, 0, 0); lc.clearRect(0, 0, bw, bh); lc.setTransform(M.a, M.b, M.c, M.d, M.e - x0, M.f - y0); lc.lineJoin = c.lineJoin; lc.lineCap = c.lineCap;
+  // parts inside the figure draw a little lighter than the silhouette that goes round them
+  ink.ctx = lc; ink.weight *= ink.partK ?? .8; try { paintBody(ink, spec, sk, o); } finally { ink.ctx = c; done(); }
+  // grow the shape: an ink-coloured copy stamped round the figure (four stamps, eight when the line is very thick), pushed further on the side away from the light, then the figure on top
+  const T = TINT = scratch(TINT, bw, bh), tc = T.getContext('2d', { willReadFrequently: true }); tc.clearRect(0, 0, bw, bh); tc.drawImage(L, 0, 0, bw, bh, 0, 0, bw, bh); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = ink.inkColor; tc.fillRect(0, 0, bw, bh); tc.globalCompositeOperation = 'source-over';
+  const Ld = ink.light, n = r > 4.5 ? 8 : 4, a0 = atan2(Ld[1], Ld[0]) + PI / n, at = [];
+  for (let i = 0; i < n; i++) { const q = a0 + i / n * TAU, cq = cos(q), sq = sin(q), k = r + e * max(0, -(cq * Ld[0] + sq * Ld[1])) * 1.4; at.push([cq * k, sq * k]); }
+  // back to device pixels through the inverse, not setTransform: a framed film canvas rewrites setTransform calls.
+  // A faded character (globalAlpha) gets its stamps under the figure on its own layer, so it fades as one picture; that path is slower, so only then.
+  const faded = c.globalAlpha < 1; if (faded) { lc.setTransform(1, 0, 0, 1, 0, 0); lc.globalCompositeOperation = 'destination-over'; for (const [dx, dy] of at) lc.drawImage(T, 0, 0, bw, bh, dx, dy, bw, bh); lc.globalCompositeOperation = 'source-over'; }
+  const iM = M.inverse(); c.save(); c.transform(iM.a, iM.b, iM.c, iM.d, iM.e, iM.f); if (!faded) for (const [dx, dy] of at) c.drawImage(T, 0, 0, bw, bh, x0 + dx, y0 + dy, bw, bh); c.drawImage(L, 0, 0, bw, bh, x0, y0, bw, bh); c.restore();
+}
+function paintBody(ink, spec, sk, { t = 0, swing = 0, hold = null, arms = null } = {}) {
   const b = spec.body, p = sk.p, expr = resolveExpr(p.expr ?? 'neutral', p.exprFrom, p.exprF), top = TOP[spec.top.type] ?? TOP.tee, col = spec.top.color;
   const seed = spec.seed * 97 + 3, rootZ = sk.root[2];
   const arm = (A, s) => {
@@ -546,9 +588,10 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
   const rg = ringsOf(spec, sk, top.skirt ? .0 : .1); if (top.puff) for (const k of ['hem', 'hip', 'waist', 'chest', 'sh']) rg[k].w *= 1.13; if (top.baggy) { rg.waist.w *= top.baggy; rg.chest.w *= 1.08; } if (top.short) { rg.hem = { c: [lerp(rg.hip.c[0], rg.waist.c[0], .06), lerp(rg.hip.c[1], rg.waist.c[1], .06)], w: rg.hip.w * 1.08 }; } const boiler = spec.top.type === 'uniform' && spec.bottom.color === spec.top.color, tuck = (spec.top.tuck || boiler) && !top.skirt; if (tuck) rg.tuckHem = { c: [lerp(rg.hip.c[0], rg.waist.c[0], .26), lerp(rg.hip.c[1], rg.waist.c[1], .26)], w: lerp(rg.hip.w, rg.waist.w, .26) };
   rg.waist.c[0] += swing * b.belly * 7; // a belly arrives late
   // pants block, hips to crotch
+  let hipPath = null;
   if (spec.top.type !== 'dress' && spec.bottom.type !== 'skirt' && spec.bottom.type !== 'kilt') {
     const hipP = dense(torsoPoly([{ ...rg.hip, c: [rg.hip.c[0], rg.hip.c[1] + b.torso * .16], w: rg.hip.w * .92 }, rg.hip, rg.waist])), cc = spec.bottom.color;
-    ink.shape(hipP, { fill: cc, shade: shadeOf(cc), shadeBy: 8, seed: seed + 21 });
+    hipPath = ink.shape(hipP, { fill: cc, shade: shadeOf(cc), shadeBy: 8, seed: seed + 21 });
     for (const [F] of legsSorted) { const hh = pr(F.h), kk = pr(F.k), f = .36, jn = [lerp(hh[0], kk[0], f), lerp(hh[1], kk[1], f)]; ink.blob([{ pts: [hh, jn], r: b.legR * .86 }], cc, { lw: 0 }); }
     ink.blob([{ pts: [[rg.hip.c[0], rg.hip.c[1] - 2]], r: rg.hip.w * .84 }], cc, { lw: 0 });
     if (spec.bottom.type === 'dhoti' && cos(sk.hipYaw) > .2) dhotiPleats(ink, spec, sk, cc);
@@ -562,11 +605,16 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
   }
   // neck, before torso line so the collar sits on top of it
   const nb = pr(sk.neckBase), nt = pr(sk.neckTop), nr = max(b.headR * .28, 13) * (b.belly ? 1.15 : 1);
-  ink.blob([{ pts: [[lerp(nb[0], nt[0], -.5), lerp(nb[1], nt[1], -.5)], [nt[0], nt[1] + 3]], r: nr }], spec.skin, { shade: darken(spec.skin, .34) });
+  const neckT = { pts: [[lerp(nb[0], nt[0], -.5), lerp(nb[1], nt[1], -.5)], [nt[0], nt[1] + 3]], r: [nr, nr] };
+  ink.blob([{ pts: neckT.pts, r: nr }], spec.skin, { shade: darken(spec.skin, .34), rim: false });
+  // the head's shadow under the chin, on the neck
+  if (cos(sk.headYaw) > -.5 && !spec.faceOnly) { const hc = pr(sk.head), Lt = ink.light, hm = new DOMMatrix().translateSelf(hc[0], hc[1]).rotateSelf((-sk.headRoll + headLean(spec.seed)) * 180 / PI).scaleSelf(1 + (p.headSq ?? 0), 1 - (p.headSq ?? 0)), hp0 = new Path2D(), cast = new Path2D(); headOutline(b.headR, b.headH, spec.face.jaw, sk.headYaw, sk.headPitch, spec.seed).forEach((q, i) => (i ? hp0.lineTo(q[0], q[1]) : hp0.moveTo(q[0], q[1]))); hp0.closePath(); cast.addPath(hp0, hm); ink.cast([tubePath(neckT)], cast, -Lt[0] * b.headR * .05, b.headH * .16); }
   // torso
   if (top.skirt) rg.skirt = skirtRing(sk, spec, top.skirt, spec.top.type === 'dress' ? 1.3 : 1.08, swing);
   const tp = dense(torsoPoly([top.skirt ? rg.skirt : tuck ? rg.tuckHem : rg.hem, ...(tuck || top.short ? [] : [rg.hip]), rg.waist, rg.chest, rg.sh, rg.neck]));
   const path = ink.shape(tp, { fill: col, shade: shadeOf(col), shadeBy: 13, seed: seed + 23 });
+  // the top's hem shades the trousers just under it
+  if (hipPath && !top.skirt) { const notTorso = new Path2D(); notTorso.rect(-9e3, -9e3, 18e3, 18e3); notTorso.addPath(path); const Lt = ink.light, C = ink.ctx; C.save(); C.clip(notTorso, 'evenodd'); ink.cast([hipPath], path, -Lt[0] * 3, b.torso * .045); C.restore(); }
   if (spec.top.type === 'stripes') stripesOn(ink, path, rg, col, spec.top.accent);
   if (top.band) { if (top.short) rg.hip = { c: [lerp(rg.hem.c[0], rg.waist.c[0], 1), lerp(rg.hem.c[1], rg.waist.c[1], 1)], w: rg.waist.w }; hemBand(ink, rg, path, top.band === 2 ? spec.top.accent : darken(col, .12), top.short ? .2 : .34); }
   detailsFront(ink, spec, sk, rg, col, path); detailsBack(ink, spec, sk, rg, col, path); hemSlits(ink, spec, rg, col, path);
@@ -576,13 +624,13 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
   const patch = A => { const a = pr(A.s), cc = top.sleeve > 0 ? col : spec.skin; ink.blob([{ pts: [[a[0], a[1]]], r: b.armR * (top.sleeve > 0 ? 1.08 : .9) }], cc, { lw: 0 }); };
   const heads = () => { if (backView) { drawHead(ink, spec, sk, p, t, expr, swing, false); drawBackHair(ink, spec, sk, swing, t); hatsOverHair(ink, spec, sk, p); } else drawHead(ink, spec, sk, p, t, expr, swing); };
   // a hijab lies over hanging arms; a hand raised to the chest stays in front of it
-  const veil = !!HAIR[spec.hair.style]?.hijab, ch = pr(sk.chest)[1], first = A => !veil || pr(A.h)[1] > ch + (pr(sk.pelvis)[1] - ch) * .5, putArm = (A, side, on, early) => { if (on && first(A) === early) { arm(A, side); patch(A); } };
+  const armShadow = A => { const a = pr(A.s), e = pr(A.e), h = pr(A.h), k = top.sleeve > 0 ? (top.puff ? 1.42 : 1.12) : 1, Lt = ink.light, d = b.armR * .55; ink.cast([path], tubePath(bend(a, e, h, b.armR * 1.14 * k, b.armR * .84 * k, b.armR * .58 * k)), -Lt[0] * d, -Lt[1] * d * .5 + d * .5); }, veil = !!HAIR[spec.hair.style]?.hijab, ch = pr(sk.chest)[1], first = A => !veil || pr(A.h)[1] > ch + (pr(sk.pelvis)[1] - ch) * .5, putArm = (A, side, on, early) => { if (on && first(A) === early) { armShadow(A); arm(A, side); patch(A); } };
   putArm(armL, 1, fL && !oL, true); putArm(armR, -1, fR && !oR, true);
   drawHijabDrape(ink, spec, sk);
   putArm(armL, 1, fL && !oL, false); putArm(armR, -1, fR && !oR, false);
   // an arm drawn over everything only goes over the head when its hand is up at the head; otherwise it would cover the face on short-necked bodies
   const atHead = A => pr(A.h)[1] < pr(sk.head)[1] + b.headH * .9;
-  if (oL && !atHead(armL)) arm(armL, 1); if (oR && !atHead(armR)) arm(armR, -1);
+  if (oL && !atHead(armL)) { armShadow(armL); arm(armL, 1); } if (oR && !atHead(armR)) { armShadow(armR); arm(armR, -1); }
   hold?.front?.(ink);
   heads();
   if (oL && atHead(armL)) arm(armL, 1); if (oR && atHead(armR)) arm(armR, -1);

@@ -34,7 +34,7 @@ export const GRADES = { warm: { color: '#ffb56b', f: .08 }, ochre: { color: '#ff
 export function drawScene(ctx, scene, t, { boil = 1, lw = 7 } = {}) {
   const ink = new Ink(ctx, { t, boil, lw }), bg = new Ink(ctx, { t: 0, boil: 0, lw });
   applyCam(ink, scene.cam ?? {}, t, scene.shakes, scene.push); bg.sc = ink.sc;
-  const L0 = LIGHTS[typeof scene.theme === 'string' ? scene.theme : 'warm'] ?? LIGHTS.warm; ink.light = scene.lightDir ?? L0.dir; ink.shadowColor = `${L0.shade}`; drawSet(bg, scene.set ?? 'plain', { theme: scene.theme ?? 'warm', seed: scene.seed ?? 3, camX: camAt(scene.cam ?? {}, t).x }); for (const p of scene.props ?? []) FREE_PROPS[p.name](bg, p.x, p.y ?? FLOOR + 40, p.scale ?? 1.4, p.color);
+  const L0 = LIGHTS[typeof scene.theme === 'string' ? scene.theme : 'warm'] ?? LIGHTS.warm; ink.light = scene.lightDir ?? L0.dir; ink.shadowColor = `${L0.shade}`; ink.key = L0.key; drawSet(bg, scene.set ?? 'plain', { theme: scene.theme ?? 'warm', seed: scene.seed ?? 3, camX: camAt(scene.cam ?? {}, t).x }); for (const p of scene.props ?? []) FREE_PROPS[p.name](bg, p.x, p.y ?? FLOOR + 40, p.scale ?? 1.4, p.color);
   // Atmosphere: lift the set toward its own wall colour, so characters are the highest contrast thing on screen.
   const theme = scene.theme ?? 'warm', T = typeof theme === 'string' ? THEMES[theme] : theme, grade = scene.grade ?? (typeof theme === 'string' ? GRADES[theme] : null);
   ctx.save(); ctx.globalAlpha = scene.haze ?? .07; ctx.fillStyle = T.wall; ctx.fillRect(-50, -50, 2020, 1180); ctx.restore();
