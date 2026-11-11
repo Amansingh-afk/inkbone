@@ -12,15 +12,28 @@ let SHADOW = '#2a1c3e'; // scenes tint the shadows to match their light
 export const setShadowTint = c => { SHADOW = c ?? '#2a1c3e'; };
 export const shadeOf = c => mix(c, SHADOW, .26);
 
-// Centreline through a bent joint: keeps the bones straight and rounds the corner.
+// Centreline through a bent joint, drawn the way a skeleton deformation bends a drawn limb: the corner is a smooth curve spread over the
+// joint (no hinge, no "nutcracker" elbow), the inside of the bend pinches where the flesh folds and the outside stays round (elbow point, kneecap),
+// and the whole limb bows a touch toward the outside, a lite rubber hose. All three scale with how far the joint is bent, so a straight limb is unchanged.
+// BEND knobs: reach (share of each bone the curve takes, straight -> folded), pinch (inside fold, in joint radii), bow (outward arc, in limb lengths).
+export const BEND = { reach: [.36, .56], pinch: .34, bow: .045 };
 export function bend(a, b, c, r0, r1, r2) {
-  const n = 6, out = [], rad = [], push = (p, r) => { out.push(p); rad.push(r); };
-  const at = (p, q, f) => [lerp(p[0], q[0], f), lerp(p[1], q[1], f)];
-  const A = at(b, a, .38), C = at(b, c, .38);
-  for (let i = 0; i <= 8; i++) push(at(a, A, i / 8), lerp(r0, lerp(r0, r1, .76), i / 8));
-  for (let i = 1; i < n; i++) { const f = i / n, u = 1 - f; push([u * u * A[0] + 2 * u * f * b[0] + f * f * C[0], u * u * A[1] + 2 * u * f * b[1] + f * f * C[1]], r1); }
-  for (let i = 0; i <= 8; i++) push(at(C, c, i / 8), lerp(lerp(r1, r2, .24), r2, i / 8));
-  return { pts: out, r: rad };
+  const at = (p, q, f) => [lerp(p[0], q[0], f), lerp(p[1], q[1], f)], l1 = hypot(a[0] - b[0], a[1] - b[1]) || 1e-6, l2 = hypot(c[0] - b[0], c[1] - b[1]) || 1e-6;
+  // k: 0 straight .. 1 folded flat, from the screen angle between the bones
+  const cosA = ((a[0] - b[0]) * (c[0] - b[0]) + (a[1] - b[1]) * (c[1] - b[1])) / (l1 * l2), k = clamp((1 + cosA) / 2 * 1.15), kk = smooth(k);
+  const R = lerp(BEND.reach[0], BEND.reach[1], kk), A = at(b, a, R), C = at(b, c, R);
+  // the outside of the bend: from the chord between the bones out through the joint
+  const mx = (A[0] + C[0]) / 2, my = (A[1] + C[1]) / 2, od = hypot(b[0] - mx, b[1] - my), ox = od > 1e-6 ? (b[0] - mx) / od : 0, oy = od > 1e-6 ? (b[1] - my) / od : 0;
+  const pts = [], rad = [], wr = [], push = (p, r, w) => { pts.push(p); rad.push(r); wr.push(w); }, N = 8, M = 8;
+  for (let i = 0; i <= N; i++) { const f = i / N; push(at(a, A, f), lerp(r0, lerp(r0, r1, .76), smooth(f)), 0); }
+  for (let i = 1; i < M; i++) { const f = i / M, u = 1 - f; push([u * u * A[0] + 2 * u * f * b[0] + f * f * C[0], u * u * A[1] + 2 * u * f * b[1] + f * f * C[1]], r1, Math.sin(f * PI)); }
+  for (let i = 0; i <= N; i++) { const f = i / N; push(at(C, c, f), lerp(lerp(r1, r2, .24), r2, smooth(f)), 0); }
+  // inside pinch: the centre slides to the outside and the radius shrinks by more, so the outer edge rounds out a little and the inner edge folds in
+  const pz = BEND.pinch * kk * r1;
+  // bow: an arc over the whole limb, zero slope at both ends so the hand and foot keep their angle at the wrist and ankle
+  const L = l1 + l2, bw = BEND.bow * kk * L; let s = 0; const S = [0]; for (let i = 1; i < pts.length; i++) { s += hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); S.push(s); }
+  for (let i = 0; i < pts.length; i++) { const u = S[i] / (s || 1), w = wr[i], d = pz * w * .55 + bw * Math.sin(u * PI) ** 2; pts[i] = [pts[i][0] + ox * d, pts[i][1] + oy * d]; rad[i] = Math.max(0, rad[i] - pz * w); }
+  return { pts, r: rad, j: pts[N + (M >> 1)], jr: rad[N + (M >> 1)] };
 }
 export function cut(tube, u) {
   if (u >= 1) return tube; let L = 0; const P = tube.pts, D = [0];
@@ -139,6 +152,17 @@ export function torsoPoly(list) {
   const curve = (arr, i, d0) => { const P = arr[i], A = arr[i - 1], B = arr[i + 1], la = hypot(A[0] - P[0], A[1] - P[1]) || 1, lb = hypot(B[0] - P[0], B[1] - P[1]) || 1, d = Math.min(d0, la * .6, lb * .7), p0 = [P[0] + (A[0] - P[0]) / la * d, P[1] + (A[1] - P[1]) / la * d], p2 = [P[0] + (B[0] - P[0]) / lb * d, P[1] + (B[1] - P[1]) / lb * d]; return [0, .2, .4, .6, .8, 1].map(t => [(1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * P[0] + t * t * p2[0], (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * P[1] + t * t * p2[1]]); };
   const out = (arr) => arr.flatMap((p, i) => (list[i].round && i > 0 && i < arr.length - 1 ? curve(arr, i, list[i].round) : [p]));
   return [...out(L), ...out(Rr).reverse()];
+}
+// The spine flexes: extra rings on a Catmull-Rom curve through the ring centres, so a lean, twist or crouch arcs the chest-to-hip outline
+// instead of hinging at the waist. Rings with round (the shoulders) and the ones after them stay as they are.
+export function spine(list, n = 2) {
+  const out = [], C = i => list[Math.max(0, Math.min(list.length - 1, i))].c;
+  for (let i = 0; i < list.length; i++) {
+    out.push(list[i]); if (i === list.length - 1 || list[i + 1].round || list[i].round) continue;
+    const p0 = C(i - 1), p1 = C(i), p2 = C(i + 1), p3 = C(i + 2);
+    for (let k = 1; k <= n; k++) { const t = k / (n + 1), t2 = t * t, t3 = t2 * t, cr = j => .5 * (2 * p1[j] + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3); out.push({ c: [cr(0), cr(1)], w: lerp(list[i].w, list[i + 1].w, smooth(t)) }); }
+  }
+  return out;
 }
 // Densify so the smoothing doesn't collapse straight runs.
 export function dense(poly, n = 3) { const o = []; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; for (let k = 0; k < n; k++) o.push([lerp(a[0], b[0], k / n), lerp(a[1], b[1], k / n)]); } return o; }
@@ -535,7 +559,7 @@ function paintBody(ink, spec, sk, { t = 0, swing = 0, hold = null, arms = null }
     if (top.sleeve > 0) {
       const sl = cut(tb, min(.97, top.sleeve)), puffK = top.puff ? 1.42 : 1.12; sl.r = sl.r.map(r => r * puffK); hemTube(ink, boilTube(ink, sl, seed + s * 7), col);
       if (top.cuff) { const whole = sl.pts.length, from = cut(tb, min(.97, top.sleeve) * .87).pts.length - 1, cf = { pts: sl.pts.slice(from), r: sl.r.slice(from).map(r => r * 1.02) }; if (cf.pts.length > 1) limbBand(ink, cf, spec.top.type === 'blazer' ? (spec.top.shirt ?? spec.top.accent) : top.cuff === 2 ? spec.top.accent : lighten(col, .08)); }
-      if (spec.top.type === 'wraps') wrapLines(ink, sl, darken(col, .42)); else if (top.sleeve > .6) jointFolds(ink, a, e, h, b.armR * puffK, darken(col, .42));
+      if (spec.top.type === 'wraps') wrapLines(ink, sl, darken(col, .42)); else if (top.sleeve > .6) jointFolds(ink, a, tb.j, h, b.armR * puffK, darken(col, .42));
       if (top.puff) { const P = sl.pts, n = P.length; for (const f of [.3, .62]) { const i = Math.floor(n * f), q = P[i], w = P[Math.min(n - 1, i + 1)], dx = w[0] - q[0], dy = w[1] - q[1], l = hypot(dx, dy) || 1, r = sl.r[i]; ink.line([[q[0] - dy / l * r, q[1] + dx / l * r], [q[0] + dx / l * 3, q[1] + dy / l * 3], [q[0] + dy / l * r, q[1] - dx / l * r]], { lw: 3, color: darken(col, .34) }); } }
     }
     if (handOver) drawHand();
@@ -560,7 +584,7 @@ function paintBody(ink, spec, sk, { t = 0, swing = 0, hold = null, arms = null }
         if (tucked) { const n = T.r.length, sr = bootShaft(spec) * 1.04; T.r = T.r.map((r, i) => { const u = i / (n - 1), k = smooth(clamp((u - .72) / .28)); return lerp(r, sr, k) * (1 + .07 * Math.sin(clamp((u - .6) / .3) * Math.PI)); }); } // tucked: the leg blouses a little, then narrows into the boot top
         hemTube(ink, T, cc);
         if (ty === 'wraps') wrapLines(ink, T, darken(cc, .42));
-        jointFolds(ink, h, k, a, b.legR * .9, dk);
+        jointFolds(ink, h, tb.j, a, b.legR * .9, dk);
         const n = T.pts.length, at0 = f => { const i = Math.min(n - 1, Math.floor(n * f)), q = T.pts[i], w = T.pts[Math.min(n - 1, i + 1)], dx = w[0] - q[0], dy = w[1] - q[1], l = hypot(dx, dy) || 1; return { q, ux: dx / l, uy: dy / l, nx: -dy / l, ny: dx / l, r: T.r[i] }; };
         if (ty === 'dhoti') { const from = Math.floor(n * .86), bd = { pts: T.pts.slice(from), r: T.r.slice(from).map(r => r * 1.02) }; if (bd.pts.length > 1) limbBand(ink, bd, B.accent ?? DHOTI_BORDER); for (const [f0, f1, o] of [[.3, .8, -.35], [.42, .84, .3]]) { const g = at0(f0), e = at0(f1); ink.line([[g.q[0] + g.nx * g.r * o, g.q[1] + g.ny * g.r * o], [e.q[0] + e.nx * e.r * o * 1.3, e.q[1] + e.ny * e.r * o * 1.3]], { lw: 2.4, color: darken(cc, .2) }); } }
         if (ty === 'jeans' && B.roll !== false && !tucked) { const from = Math.floor(n * .88), cf = { pts: T.pts.slice(from), r: T.r.slice(from).map(r => r * 1.2) }; if (cf.pts.length > 1) limbBand(ink, cf, lighten(cc, .28)); }
@@ -615,7 +639,7 @@ function paintBody(ink, spec, sk, { t = 0, swing = 0, hold = null, arms = null }
   if (cos(sk.headYaw) > -.5 && !spec.faceOnly) { const hc = pr(sk.head), Lt = ink.light, hm = new DOMMatrix().translateSelf(hc[0], hc[1]).rotateSelf((-sk.headRoll + headLean(spec.seed)) * 180 / PI).scaleSelf(1 + (p.headSq ?? 0), 1 - (p.headSq ?? 0)), hp0 = new Path2D(), cast = new Path2D(); headOutline(b.headR, b.headH, spec.face.jaw, sk.headYaw, sk.headPitch, spec.seed).forEach((q, i) => (i ? hp0.lineTo(q[0], q[1]) : hp0.moveTo(q[0], q[1]))); hp0.closePath(); cast.addPath(hp0, hm); ink.cast([tubePath(neckT)], cast, -Lt[0] * b.headR * .05, b.headH * .16); }
   // torso
   if (top.skirt) rg.skirt = skirtRing(sk, spec, top.skirt, spec.top.type === 'dress' ? 1.3 : 1.08, swing);
-  const tp = dense(torsoPoly([top.skirt ? rg.skirt : tuck ? rg.tuckHem : rg.hem, ...(tuck || top.short ? [] : [rg.hip]), rg.waist, rg.chest, rg.sh, rg.neck]));
+  const tp = dense(torsoPoly(spine([top.skirt ? rg.skirt : tuck ? rg.tuckHem : rg.hem, ...(tuck || top.short ? [] : [rg.hip]), rg.waist, rg.chest, rg.sh, rg.neck])));
   const path = ink.shape(tp, { fill: col, shade: shadeOf(col), shadeBy: 13, seed: seed + 23 });
   // the top's hem shades the trousers just under it
   if (hipPath && !top.skirt) { const notTorso = new Path2D(); notTorso.rect(-9e3, -9e3, 18e3, 18e3); notTorso.addPath(path); const Lt = ink.light, C = ink.ctx; C.save(); C.clip(notTorso, 'evenodd'); ink.cast([hipPath], path, -Lt[0] * 3, b.torso * .045); C.restore(); }
