@@ -5,6 +5,14 @@ import { paintSpec } from './styles/index.js';
 import { MOVES } from './moves/index.js';
 import { drawProp, boxProp, bookProp, clipboardProp, TIP } from './props.js';
 import { FX } from './fx/index.js';
+import { drawSmears } from './smear.js';
+// Paints the current drawing again, shifted and see-through, for the multiples of a dash. It goes through a spare canvas so the copy fades as one flat image.
+let spare = null;
+function ghostPainter(ink, spec, sk, opts) {
+  return (dx, dy, alpha) => { const cv = ink.ctx.canvas, real = cv?.getContext?.('2d'); if (!real || typeof OffscreenCanvas === 'undefined') return;
+    if (!spare || spare.width !== cv.width || spare.height !== cv.height) spare = new OffscreenCanvas(cv.width, cv.height); const g = spare.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); g.setTransform(ink.ctx.getTransform()); g.translate(dx, dy); g.lineJoin = 'round'; g.lineCap = 'round';
+    paintSpec(Object.assign(Object.create(Object.getPrototypeOf(ink)), ink, { ctx: g, stack: [] }), spec, sk, opts); real.save(); real.setTransform(1, 0, 0, 1, 0, 0); real.globalAlpha = alpha; real.drawImage(spare, 0, 0); real.restore(); };
+}
 // A scene's light on a character: every colour leans toward the light's colour. Eye whites and the ink line stay put, so faces still read in the dark.
 const graded = new WeakMap();
 export function gradeSpec(spec, { color, f }) {
@@ -73,7 +81,7 @@ const ANCHOR = { face: s => s.head, rh: s => s.R.h, lh: s => s.L.h, head: s => s
 export function anchorOf(spec, sk, at) { if (at === 'feet') return [(sk.lf.a[0] + sk.rf.a[0]) / 2, 0]; const v = spinPt(sk.p, pr(ANCHOR[at]?.(sk) ?? sk.pelvis)); const up = at === 'head' ? -spec.body.headH * (sk.p.spin ? .2 : 1.05) : 0; return [v[0], v[1] + up]; }
 
 // One character acting one move at position (x, y) on screen.
-export function drawAct(ink, spec, name, t, { x = 0, y = 0, scale = 1, facing = .55, flip = 1, travel = 0, overrides = null, cues = true, shadow = true, palette, from = null, clock = t, grade = null, weightK = 1, arms = null } = {}) {
+export function drawAct(ink, spec, name, t, { x = 0, y = 0, scale = 1, facing = .55, flip = 1, travel = 0, overrides = null, cues = true, shadow = true, palette, from = null, clock = t, grade = null, weightK = 1, arms = null, smear = 1 } = {}) {
   const move = typeof name === 'object' ? name : MOVES[name] ?? MOVES.idle, at = (u, overlap = true) => actingPose(move, Math.max(0, u), { facing, overrides, from, overlap }), pose = at(t);
   // Thinking: the eyes get there first, a head turn takes a blink with it, and resting eyes make small darts.
   const turnYaw = p => (p.yaw ?? 0) + (p.twist ?? 0) * .25 + (p.headYaw ?? 0), ahead = turnYaw(at(t + 4 / 24)) - turnYaw(pose), win = Math.floor(clock / 1.3), dart = hash(spec.seed * 3 + 5, win, 3) > .55 ? (hash(spec.seed * 3 + 5, win, 7) - .5) * .34 : 0;
@@ -86,25 +94,19 @@ export function drawAct(ink, spec, name, t, { x = 0, y = 0, scale = 1, facing = 
   ink.push(x, y, scale, flip); const keepW = ink.weight; ink.weight = Math.max(.42, Math.min(1.15, scale ** .85)) * weightK;
   if (shadow) { const c = ink.ctx, rz = spec.body.hip * 1.5, lift = clamp(1 - sk.pelvis[1] / (spec.body.thigh + spec.body.shin) * .25), sl = ink.light, cx0 = (sk.lf.a[0] + sk.rf.a[0]) / 2; c.save(); c.globalAlpha = .34 * lift; c.fillStyle = ink.shadowColor ?? '#281830'; c.beginPath(); c.ellipse(cx0 - sl[0] * rz * .9, 9, Math.max(rz * 1.5 * lift, 34), 11 * lift, 0, 0, Math.PI * 2); c.fill(); c.globalAlpha = .28 * lift; c.beginPath(); c.ellipse(cx0, 8, Math.max(rz * lift, 24), 9 * lift, 0, 0, Math.PI * 2); c.fill(); c.restore(); } // cast away from the light, in the scene's shadow colour
   ink.ctx.save(); ink.ctx.translate(shX / scale, shY / scale);
-  // Smear: a fast limb draws a solid tapered wedge back along its path, attached to the limb as drawn.
-  const frozen = (move.hits ?? []).some(h => t >= h.t - 1 / 24 && t < h.t + (h.stop ?? 0) + 2 / 24); // no smears on a held pose
-  if (!move.cycle && !frozen) for (const [get, col, R0] of [[q => q.R.h, spec.skin, spec.body.handR], [q => q.L.h, spec.skin, spec.body.handR], [q => q.rf.a, spec.shoes.type === 'slide' ? spec.skin : spec.shoes.color, spec.body.footH * 1.3], [q => q.lf.a, spec.shoes.type === 'slide' ? spec.skin : spec.shoes.color, spec.body.footH * 1.3]]) {
-    const P = [pr(get(sk)), ...[1, 2, 3].map(k => pr(get(solve(spec, at(t - k / 12)))))]; let L = 0; for (let i = 1; i < 4; i++) L += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]);
-    if (L < 230 || L > 1200) continue; const sqz = pose.sq ?? 0, spinA = (pose.spin ?? 0) * (Math.sin(pose.yaw) >= 0 ? -1 : 1), csA = Math.cos(spinA), snA = Math.sin(spinA); for (let i = 0; i < 4; i++) { const x0 = (P[i][0] - pose.x) * (1 + sqz), y0 = P[i][1] * (1 - sqz); P[i] = [pose.x + x0 * csA - y0 * snA, x0 * snA + y0 * csA]; } // Smears follow the same squash and spin as the body, and stay a short tail, never limb-length.
-    const k = Math.min(1, 42 / L); for (let i = 1; i < 4; i++) P[i] = [lerp(P[0][0], P[i][0], k), lerp(P[0][1], P[i][1], k)];
-    ink.blob([{ pts: P, r: [R0 * .8, R0 * .68, R0 * .48, R0 * .16] }], col, { lw: 3.2 });
-  }
   const hold = {}; if (move.props?.r) hold[isFlipped(move, facing) ? 'l' : 'r'] = (i, h, e, layer) => drawProp(i, move.props.r, h, e, layer, spec, sk, isFlipped(move, facing) ? 1 : -1);
   if (move.props?.l) hold[isFlipped(move, facing) ? 'r' : 'l'] = (i, h, e, layer) => drawProp(i, move.props.l, h, e, layer, spec, sk, isFlipped(move, facing) ? -1 : 1);
   if (move.props?.book) hold.front = i => bookProp(i, sk, spec);
   if (move.props?.box) hold.front = i => boxProp(i, sk, spec);
   if (move.props?.board) hold.front = i => clipboardProp(i, sk, spec, isFlipped(move, facing));
-  paintSpec(ink, spec, sk, { t: clock, swing, hold, arms });
+  // Smears, multiples and speed lines for fast action, behind the drawing. A hit's contact drawing keeps its smear for its two frames; the held pose after has none, since nothing moved.
+  const onTop = drawSmears(ink, spec, move, u => at(u), t, sk, pose, { ghost: ghostPainter(ink, spec, sk, { t: clock, swing, hold, arms }), k: smear });
+  paintSpec(ink, spec, sk, { t: clock, swing, hold, arms }); for (const f of onTop) f();
   // effects anchored to the body, on top
   if (cues) for (const c of move.cues ?? []) {
     const d = (move.loop ? t % move.dur : t) - c.t, f = FX[c.fx]; if (!f) continue; const dur = f.dur ?? 1; if (d < 0 || d > dur) continue;
     const aP = c.at === 'head' ? anchorOf(spec, sk, 'head') : sampleAtCue(spec, move, c, facing);
-    f.draw(ink, Math.floor(d * 24) / 24, { x: aP[0], y: aP[1], scale: c.scale ?? 1, palette: c.palette ?? f.palette, seed: spec.seed + Math.round(c.t * 100), flip: c.flip ? -1 : 1 });
+    const ch = anchorOf(spec, sk, 'chest'); f.draw(ink, Math.floor(d * 24) / 24, { x: aP[0], y: aP[1], scale: c.scale ?? 1, palette: c.palette ?? f.palette, seed: spec.seed + Math.round(c.t * 100), flip: c.flip ? -1 : 1, away: Math.atan2(aP[1] - ch[1], (aP[0] - ch[0]) * (c.flip ? -1 : 1)) });
   }
   ink.ctx.restore(); ink.weight = keepW; ink.pop();
   return { sk, pose };

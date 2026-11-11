@@ -31,8 +31,9 @@ export function actorState(actor, T) {
 }
 // How the light in each theme falls on characters. A scene can set its own with grade: { color, f }, or grade: false for none.
 export const GRADES = { warm: { color: '#ffb56b', f: .08 }, ochre: { color: '#ffb56b', f: .08 }, cabin: { color: '#d9894a', f: .12 }, pink: { color: '#ff9f8f', f: .08 }, mint: { color: '#fff0a8', f: .05 }, cool: { color: '#7fb0e0', f: .1 }, teal: { color: '#6fb0a8', f: .08 }, night: { color: '#27346e', f: .4 }, dusk: { color: '#e0623f', f: .2 } };
-export function drawScene(ctx, scene, t, { boil = 1, lw = 7 } = {}) {
-  const ink = new Ink(ctx, { t, boil, lw }), bg = new Ink(ctx, { t: 0, boil: 0, lw });
+// hold: seconds to add to the drawings' clock only. Motion blur samples use it so positions blur while every drawing stays the one on screen at the frame itself.
+export function drawScene(ctx, scene, t, { boil = 1, lw = 7, hold = 0 } = {}) {
+  const ink = new Ink(ctx, { t: t + hold, boil, lw }), bg = new Ink(ctx, { t: 0, boil: 0, lw });
   applyCam(ink, scene.cam ?? {}, t, scene.shakes, scene.push); bg.sc = ink.sc;
   const L0 = LIGHTS[typeof scene.theme === 'string' ? scene.theme : 'warm'] ?? LIGHTS.warm; ink.light = scene.lightDir ?? L0.dir; ink.shadowColor = `${L0.shade}`; drawSet(bg, scene.set ?? 'plain', { theme: scene.theme ?? 'warm', seed: scene.seed ?? 3, camX: camAt(scene.cam ?? {}, t).x }); for (const p of scene.props ?? []) FREE_PROPS[p.name](bg, p.x, p.y ?? FLOOR + 40, p.scale ?? 1.4, p.color);
   // Atmosphere: lift the set toward its own wall colour, so characters are the highest contrast thing on screen.
@@ -42,7 +43,7 @@ export function drawScene(ctx, scene, t, { boil = 1, lw = 7 } = {}) {
   const A = (scene.actors ?? []).map(a => ({ a, s: actorState(a, t) })).sort((p, q) => (p.a.y ?? 0) - (q.a.y ?? 0));
   // A duet: the actor whose track says { at, duet: 'handshake', with: 'theirId' } stays put and the other joins them for its length.
   const taken = new Set(A.filter(q => q.s.seg.duet).map(q => q.s.seg.with));
-  for (const { a, s } of A) if (s.seg.duet) { const b = (scene.actors ?? []).find(q => q.id === s.seg.with), d = DUETS[s.seg.duet], side = d.lead === 'a' ? -1 : 1; drawDuet(ink, a.spec, b.spec, s.seg.duet, s.local, { x: s.x + side * d.gap(a.spec, b.spec) / 2 * s.scale, y: a.y ?? FLOOR + 40, scale: s.scale, clock: t, grade: grade || null }); } else if (!taken.has(a.id)) drawAct(ink, a.spec, s.seg.move, s.local, { x: s.x, y: a.y ?? FLOOR + 40, scale: s.scale, facing: s.facing, overrides: s.seg.overrides ?? a.overrides, from: s.from, clock: t, grade: grade || null });
+  for (const { a, s } of A) if (s.seg.duet) { const b = (scene.actors ?? []).find(q => q.id === s.seg.with), d = DUETS[s.seg.duet], side = d.lead === 'a' ? -1 : 1; drawDuet(ink, a.spec, b.spec, s.seg.duet, s.local + hold, { x: s.x + side * d.gap(a.spec, b.spec) / 2 * s.scale, y: a.y ?? FLOOR + 40, scale: s.scale, clock: t + hold, grade: grade || null }); } else if (!taken.has(a.id)) drawAct(ink, a.spec, s.seg.move, s.local + hold, { x: s.x, y: a.y ?? FLOOR + 40, scale: s.scale, facing: s.facing, overrides: s.seg.overrides ?? a.overrides, from: s.from, clock: t + hold, grade: grade || null, smear: a.smear ?? scene.smear ?? 1 });
   for (const f of scene.fx ?? []) { const d = t - f.t, def = FX[f.fx]; if (d < 0 || (!def.loop && d > def.dur) || (f.until && t > f.until)) continue; def.draw(ink, Math.floor(d * 24) / 24, { ...f, x: f.x, y: f.y, scale: f.scale ?? 1, palette: f.palette ?? def.palette, seed: f.seed ?? 1, size: f.size, w: 1920, h: 1080 }); }
   if (scene.lit !== false) drawSetLight(ctx, scene.set ?? 'plain', scene.theme ?? 'warm');
   for (const f of scene.fg ?? []) drawForeground(bg, f, theme, camAt(scene.cam ?? {}, t).x);

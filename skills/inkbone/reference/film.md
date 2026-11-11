@@ -12,6 +12,7 @@
 | `style` | `"round"` (default) or `"stick"`, for every character unless one says otherwise. |
 | `characters` | `{ id: character }`. Actors refer to these with `"who"`. |
 | `captions` | `true` by default when scenes have lines. `false` turns them off, or `{ "size": 1.2, "y": 0.8, "highlight": "#f4c542" }` to adjust (y is a share of the height). |
+| `motionBlur` | 2D only, off by default. `3`-`8` averages that many renders across half a frame (`{ "samples": 6, "shutter": 0.5 }` to set the shutter in frames). Camera moves, travel and effects blur; the drawings themselves stay put. Each sample costs a whole frame of render time. |
 | `scenes` | played end to end. A file with no `scenes` list is one scene. |
 
 ## Characters
@@ -49,6 +50,7 @@ A character is one of:
 - Segment fields: `move`, `facing` (0 faces us, 1.57 screen right, -1.57 screen left, 3.14 back), `to` (walk there at the speed the feet move, then stop; leave time to arrive), `expr` (an expression), `overrides` (any pose field).
 - `"move": "talk-mix"` picks one talking gesture per segment, the same each render. `talk-wag` is angry and only used by name.
 - Duets: `{ "at": 1, "duet": "handshake", "with": "otherId" }` on one actor; the partner joins for its length. In 2D give actors an `id` (or use `who`, which counts as one).
+- Fast moves smear by themselves: a punch gets streaks along the arm, a swing or a kick a tapered smear, a whip fading copies, a jump or dash speed lines and see-through copies. Ordinary gestures stay clean. `"smear": 0` on an actor or a scene turns it off, and `0.5` makes it harder to trigger.
 
 ## Lines (dialogue)
 
