@@ -51,7 +51,7 @@ async function catalog() {
     duets: n(Object.keys(I.DUETS), k => `${I.DUETS[k].dur}s, two people`),
     expressions: n(I.exprNames), heads: n(['human', ...HEADS]), bodies: n(Object.keys(I.BODIES), k => I.BODIES[k].manual ? 'by name only' : ''),
     tops: n([...I.TOPS, 'none']), bottoms: n(I.BOTTOMS), shoes: n(I.SHOES), hair: n([...I.HAIRSTYLES, ...I.HAIR_EXTRA, 'hijab']), hats: n(HATS),
-    accessories: n(['glasses', 'shades', 'earrings', 'bindi', 'scarf', 'tie', 'watch', 'lanyard', 'collar']), eyes: n(I.EYES), jaws: n(I.JAWS), noses: n(I.NOSES), facial: n(['none', 'stubble', 'moustache', 'beard', 'longbeard', 'goatee']),
+    accessories: n(['glasses', 'shades', 'earrings', 'bindi', 'scarf', 'tie', 'watch', 'lanyard', 'collar', 'cape']), eyes: n(I.EYES), jaws: n(I.JAWS), noses: n(I.NOSES), facial: n(['none', 'stubble', 'moustache', 'beard', 'longbeard', 'goatee']),
     sets: n(I.setNames, () => '2D'), themes: n(Object.keys(THEMES), () => '2D'), transitions: n(Object.keys(TRANSITIONS), () => '2D, scene.out'),
     worlds: n(FL.WORLD_NAMES, () => '3D'), times: n(FL.TIME_NAMES, () => '3D'), cameras: n(FL.CAMERA3D_NAMES, () => '3D, scene.cam[].move'),
     effects: n(Object.keys(I.FX), k => `[${I.FX[k].tags.join(', ')}]${I.FX[k].loop ? ' loop' : ''}`),

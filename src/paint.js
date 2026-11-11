@@ -6,6 +6,7 @@ import { drawHat, HATS } from './hats.js';
 import { animalBehind, animalSkin, animalFront } from './animal.js';
 import { drawShoe, drawSlipperSole, drawSlipperStrap, drawToes, BOOT_SHIN, bootShaft } from './shoes.js';
 import { drawHairFront, drawBackLocks, drawBackHair, drawHijabDrape, HAIR } from './hair.js';
+import { drawCape } from './secondary.js';
 const { sin, cos, hypot, atan2, PI, abs, max, min } = Math;
 let SHADOW = '#2a1c3e'; // scenes tint the shadows to match their light
 export const setShadowTint = c => { SHADOW = c ?? '#2a1c3e'; };
@@ -145,7 +146,9 @@ export function skirtRing(sk, spec, len, flare, swing = 0) {
   const b = spec.body, pel = pr(sk.pelvis), kL = pr(sk.lf.k), aL = pr(sk.lf.a), kR = pr(sk.rf.k), aR = pr(sk.rf.a);
   const at = (k, a) => (len <= .5 ? [lerp(pel[0], k[0], len * 2), lerp(pel[1], k[1], len * 2)] : [lerp(k[0], a[0], len * 2 - 1), lerp(k[1], a[1], len * 2 - 1)]);
   const L = at(kL, aL), Rr = at(kR, aR), half = Math.abs(L[0] - Rr[0]) / 2 + b.legR * .95;
-  return { c: [(L[0] + Rr[0]) / 2 + swing * b.legR * (.5 + len), Math.max(L[1], Rr[1])], w: Math.max(half, b.hip * 1.06) * flare };
+  // secondary motion: the hem lags behind the hips and flares out on a spin, rising a little as it does
+  const S = sk.sway, drop = Math.max(L[1], Rr[1]) - pel[1], fl = S ? S.flare * (.4 + len * .7) : 0;
+  return { c: [(L[0] + Rr[0]) / 2 + (S ? S.hem[0] * drop : swing * b.legR * (.5 + len)), Math.max(L[1], Rr[1]) + (S ? S.hem[1] * drop * .5 - fl * drop * .3 : 0)], w: Math.max(half, b.hip * 1.06) * flare * (1 + fl) + (S ? Math.abs(S.hem[0]) * drop * .6 : 0) }; // a lagging hem widens as it goes, so the leading knee never pokes out
 }
 
 // Body front details stay glued to the chest as it turns, and vanish when it faces away.
@@ -228,7 +231,7 @@ export function detailsFront(ink, spec, sk, rg, col, path) {
     seam(ink, [S('neck', 0, 8), S('chest', 0, 0), S('waist', 0, 0), S('hem', 0, 0)], dark, 3.2);
     const m = []; for (let i = 0; i <= 8; i++) { const a = PI * i / 8; m.push(S('neck', cos(a) * 1.25, sin(a) * 8 - 11)); } ink.line(m, { lw: 18, even: 1 }); ink.line(m, { lw: 13, color: lighten(col, .08), even: 1 });
   }
-  if (spec.acc.includes('tie') && (type === 'shirt' || type === 'blazer')) { const a = S('neck', 0, 11), q = t.longTie ? S('hem', 0, 16) : S('chest', 0, 42), wd = 8 * cy; ink.shape([[a[0] - wd * .8, a[1]], [a[0] + wd * .8, a[1]], [a[0] + wd * .45, a[1] + 8], [q[0] + wd, q[1] - 6], [q[0], q[1] + 8], [q[0] - wd, q[1] - 6], [a[0] - wd * .45, a[1] + 8]], { fill: ac, lw: 3, hard: true }); const ty = darken(ac, .32); for (let i = 0; i < 5; i++) { const f = i / 5, qx = lerp(a[0], q[0], .22 + f * .72), qy = lerp(a[1], q[1], .22 + f * .72) + 1; ink.ctx.fillStyle = ty; ink.ctx.beginPath(); ink.ctx.arc(qx + (i % 2 ? 2.4 : -2.4) * cy, qy, 1.5, 0, TAU); ink.ctx.fill(); } }
+  if (spec.acc.includes('tie') && (type === 'shirt' || type === 'blazer')) { const a = S('neck', 0, 11), q0 = t.longTie ? S('hem', 0, 16) : S('chest', 0, 42), tw = sk.sway?.tie ?? [0, 0], tl = q0[1] - a[1], q = [q0[0] + tw[0] * tl, q0[1] + tw[1] * tl * .5], wd = 8 * cy; ink.shape([[a[0] - wd * .8, a[1]], [a[0] + wd * .8, a[1]], [a[0] + wd * .45, a[1] + 8], [q[0] + wd, q[1] - 6], [q[0], q[1] + 8], [q[0] - wd, q[1] - 6], [a[0] - wd * .45, a[1] + 8]], { fill: ac, lw: 3, hard: true }); const ty = darken(ac, .32); for (let i = 0; i < 5; i++) { const f = i / 5, qx = lerp(a[0], q[0], .22 + f * .72), qy = lerp(a[1], q[1], .22 + f * .72) + 1; ink.ctx.fillStyle = ty; ink.ctx.beginPath(); ink.ctx.arc(qx + (i % 2 ? 2.4 : -2.4) * cy, qy, 1.5, 0, TAU); ink.ctx.fill(); } }
   if (spec.acc.includes('lanyard')) { const by = S('waist', 0, -8), w = 13 * cy; for (const q of [1, -1]) ink.line([S('neck', q * .78, -5), by], { lw: 3, even: 1, color: '#221733' }); ink.shape([[by[0] - w, by[1]], [by[0] + w, by[1]], [by[0] + w, by[1] + 34], [by[0] - w, by[1] + 34]], { fill: '#39394a', lw: 3, hard: true }); ink.shape([[by[0] - w * .78, by[1] + 4], [by[0] + w * .78, by[1] + 4], [by[0] + w * .78, by[1] + 30], [by[0] - w * .78, by[1] + 30]], { fill: '#f2ece0', stroke: false, hard: true }); ink.ell(by[0], by[1] + 13, 4.6 * cy, 4.6, { fill: '#2f9e8f', stroke: false }); ink.line([[by[0] - w * .5, by[1] + 25], [by[0] + w * .5, by[1] + 25]], { lw: 3, color: '#2f9e8f', hard: true, even: 1 }); }
   // toga and pelt hang from one shoulder: the other shoulder is bare, and a fold runs across the chest
   if ((type === 'toga' || type === 'pelt') && cy > .25) clipOn(() => { ink.shape([S('neck', -.2, -4), S('sh', -1.1, -4), S('chest', -1.1, 24), S('chest', -.5, 14), S('neck', -.1, 8)], { fill: skin, shade: shadeOf(skin), shadeBy: 4, stroke: false }); ink.line([S('neck', -.1, 8), S('chest', -.5, 14), S('chest', -1.1, 24)], { lw: 3.4, even: 1 });
@@ -536,6 +539,7 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
   if (p.spin) { const dir = sin(p.yaw) >= 0 ? -1 : 1; ink.ctx.translate(p.x, 0); ink.ctx.rotate(p.spin * dir); ink.ctx.translate(-p.x, 0); }
   const armL = sk.L, armR = sk.R, fL = frontArm(armL), fR = frontArm(armR);
   if (arms?.only) { arm(sk[arms.only], arms.only === 'L' ? 1 : -1); ink.ctx.restore(); return; }
+  drawCape(ink, spec, sk, 'back', shadeOf);
   drawBackLocks(ink, spec, sk, swing);
   if (!backView) drawBackHair(ink, spec, sk, swing, t);
   const overOf = (A, flag) => (A.faceW > .5 ? A.h[2] >= sk.head[2] - b.headR * .1 : flag > .5), oL = overOf(armL, p.overL), oR = overOf(armR, p.overR);
@@ -570,6 +574,7 @@ export function paintCharacter(ink, spec, sk, { t = 0, swing = 0, hold = null, a
   if (spec.top.type === 'stripes') stripesOn(ink, path, rg, col, spec.top.accent);
   if (top.band) { if (top.short) rg.hip = { c: [lerp(rg.hem.c[0], rg.waist.c[0], 1), lerp(rg.hem.c[1], rg.waist.c[1], 1)], w: rg.waist.w }; hemBand(ink, rg, path, top.band === 2 ? spec.top.accent : darken(col, .12), top.short ? .2 : .34); }
   detailsFront(ink, spec, sk, rg, col, path); detailsBack(ink, spec, sk, rg, col, path); hemSlits(ink, spec, rg, col, path);
+  drawCape(ink, spec, sk, 'front', shadeOf);
   if (tuck) { const bc = spec.bottom.belt ?? '#2c2c3a', h0 = rg.tuckHem, m = { c: [lerp(h0.c[0], rg.hip.c[0], .3), lerp(h0.c[1], rg.hip.c[1], .3)], w: lerp(h0.w, rg.hip.w, .3) }, q = torsoPoly([m, h0]); ink.shape(q, { fill: bc, lw: 3.2, hard: true }); if (cos(sk.hipYaw) > .3) { const yw = sin(sk.hipYaw) * rg.hip.w * .9, bx = (m.c[0] + h0.c[0]) / 2 + yw, by = (m.c[1] + h0.c[1]) / 2; ink.shape([[bx - 9, by - 7], [bx + 9, by - 7], [bx + 9, by + 7], [bx - 9, by + 7]], { fill: '#d9b24a', lw: 2.4, hard: true }); } }
   if (spec.acc.includes('scarf')) { const a = pr(sk.neckBase); ink.blob([{ pts: [[a[0] - nr * 1.3, a[1] - 2], [a[0], a[1] + 5], [a[0] + nr * 1.3, a[1] - 2]], r: nr * .6 }], spec.top.accent, { shade: shadeOf(spec.top.accent) }); }
   // arms in front merge at the shoulder with a fill-only patch

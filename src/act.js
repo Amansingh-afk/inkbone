@@ -5,6 +5,7 @@ import { paintSpec } from './styles/index.js';
 import { MOVES } from './moves/index.js';
 import { drawProp, boxProp, bookProp, clipboardProp, TIP } from './props.js';
 import { FX } from './fx/index.js';
+import { swayAt } from './secondary.js';
 // A scene's light on a character: every colour leans toward the light's colour. Eye whites and the ink line stay put, so faces still read in the dark.
 const graded = new WeakMap();
 export function gradeSpec(spec, { color, f }) {
@@ -73,13 +74,15 @@ const ANCHOR = { face: s => s.head, rh: s => s.R.h, lh: s => s.L.h, head: s => s
 export function anchorOf(spec, sk, at) { if (at === 'feet') return [(sk.lf.a[0] + sk.rf.a[0]) / 2, 0]; const v = spinPt(sk.p, pr(ANCHOR[at]?.(sk) ?? sk.pelvis)); const up = at === 'head' ? -spec.body.headH * (sk.p.spin ? .2 : 1.05) : 0; return [v[0], v[1] + up]; }
 
 // One character acting one move at position (x, y) on screen.
-export function drawAct(ink, spec, name, t, { x = 0, y = 0, scale = 1, facing = .55, flip = 1, travel = 0, overrides = null, cues = true, shadow = true, palette, from = null, clock = t, grade = null, weightK = 1, arms = null } = {}) {
+export function drawAct(ink, spec, name, t, { x = 0, y = 0, scale = 1, facing = .55, flip = 1, travel = 0, overrides = null, cues = true, shadow = true, palette, from = null, clock = t, grade = null, weightK = 1, arms = null, past = null, wind = 0, sway = true } = {}) {
   const move = typeof name === 'object' ? name : MOVES[name] ?? MOVES.idle, at = (u, overlap = true) => actingPose(move, Math.max(0, u), { facing, overrides, from, overlap }), pose = at(t);
   // Thinking: the eyes get there first, a head turn takes a blink with it, and resting eyes make small darts.
   const turnYaw = p => (p.yaw ?? 0) + (p.twist ?? 0) * .25 + (p.headYaw ?? 0), ahead = turnYaw(at(t + 4 / 24)) - turnYaw(pose), win = Math.floor(clock / 1.3), dart = hash(spec.seed * 3 + 5, win, 3) > .55 ? (hash(spec.seed * 3 + 5, win, 7) - .5) * .34 : 0;
   pose.look = [clamp((pose.look?.[0] ?? 0) + Math.max(-.85, Math.min(.85, ahead * 1.7)) + dart, -1, 1), pose.look?.[1] ?? 0];
   if (Math.abs(ahead) > .3) pose.blink = 1;
   const sk = solve(spec, pose), prev = solve(spec, at(t - .1)); if (grade) spec = gradeSpec(spec, grade);
+  // secondary motion: hair, hems, capes and ties lag behind the body. past(d) is where the actor was d seconds ago; on its own a move only knows its own poses
+  if (sway) sk.sway = swayAt(spec, d => (d ? past?.(d) ?? { pose: at(t - d), dx: 0 } : { pose, dx: 0 }), clock, { wind });
   const swing = clamp((prev.head[0] - sk.head[0]) / 34 + (move.stride ? -.45 * Math.sign(Math.sin(pose.yaw)) : 0), -1, 1);
   const stops = move.hits ?? []; let shX = 0, shY = 0;
   for (const h of stops) { const d = t - h.t; if (d >= 0 && d < (h.shake ?? 0)) { const a = (h.amp ?? 8) * (1 - d / h.shake), f = Math.floor(t * 24), flip = f % 2 ? 1 : -1; shX += flip * a * (.6 + hash(f, 3) * .4); shY += -flip * a * .6 * (.4 + hash(f, 7) * .6); } }
