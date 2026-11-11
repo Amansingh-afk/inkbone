@@ -82,6 +82,7 @@ The stage is 1920×1080 whatever the output size; the floor is at y 900, so acto
 | `shakes` | camera kicks: `[{ "t", "dur", "amp" }]` |
 | `fg` | foreground pieces: `[{ "kind": "curtain", "x", "scale" }]` |
 | `grade` | light on characters `{ "color", "f" }`, or `false` |
+| `wind` | air blowing through hair, hems and capes: a strength like `0.5` (blows right), or `{ "strength", "dir": 1 or -1, "gust": 0-1 }`. Off by default |
 
 ## 3D scenes
 

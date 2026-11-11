@@ -70,7 +70,7 @@ export function validateFilm(film) {
     check(path + '.cast', c.cast, castNames, 'cast member'); check(path + '.style', c.style, ['round', 'stick'], 'style'); check(path + '.bodyType', c.bodyType, Object.keys(BODIES), 'body type'); check(path + '.gender', c.gender, ['man', 'woman'], 'gender'); check(path + '.head', c.head, HEADS, 'head');
     check(path + '.top.type', c.top?.type, [...TOPS, 'none'], 'top'); check(path + '.bottom.type', c.bottom?.type, BOTTOMS, 'bottom'); check(path + '.shoes.type', c.shoes?.type, SHOES, 'shoes'); check(path + '.hair.style', c.hair?.style, [...HAIRSTYLES, ...HAIR_EXTRA, 'hijab'], 'hairstyle');
     check(path + '.face.eyes', c.face?.eyes, EYES, 'eye shape'); check(path + '.face.jaw', c.face?.jaw, JAWS, 'jaw'); check(path + '.face.nose', c.face?.nose, NOSES, 'nose'); check(path + '.face.facial', c.face?.facial, ['none', 'stubble', 'moustache', 'beard', 'longbeard', 'goatee'], 'facial hair');
-    for (const a of c.acc ?? []) check(path + '.acc', a, [...HATS, 'glasses', 'shades', 'earrings', 'bindi', 'scarf', 'tie', 'watch', 'lanyard', 'collar'], 'accessory'); };
+    for (const a of c.acc ?? []) check(path + '.acc', a, [...HATS, 'glasses', 'shades', 'earrings', 'bindi', 'scarf', 'tie', 'watch', 'lanyard', 'collar', 'cape'], 'accessory'); };
   for (const [id, c] of Object.entries(f.characters ?? {})) checkChar(`characters.${id}`, c);
   f.scenes.forEach((s, i) => { const P = `scenes[${i}]`; if (!(s.dur > 0)) out.push(`${P}.dur: every scene needs a length in seconds`);
     if (mode === '2d') { check(P + '.set', s.set, setNames, 'set'); if (typeof s.theme === 'string') check(P + '.theme', s.theme, Object.keys(THEMES), 'theme'); if (s.out) check(P + '.out.name', s.out.name, transitionNames, 'transition'); }
