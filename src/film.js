@@ -1,5 +1,6 @@
 // A film is plain JSON, so any tool or agent can write one. It names its characters once, then scenes refer to them.
 //   { "mode": "2d" | "3d", "size": "1920x1080", "fps": 24, "style": "round" | "stick",
+//     "motionBlur": 0 | 3 | { "samples": 3, "shutter": .5 }   (2D only, off by default: each sample is a whole extra frame of drawing)
 //     "characters": { "hero": "dude", "boss": { "cast": "boss", "style": "stick" }, "pup": { "seed": 7, "head": "dog", "top": { "type": "hoodie" } } },
 //     "scenes": [ { ...a 2D or 3D scene, with actors: [{ "who": "hero", ... }] } ] }
 // A single scene with no "scenes" list is a one-scene film. See skills/inkbone/reference/film.md for every field.
@@ -53,7 +54,7 @@ export function buildFilm(film) {
   const who = a => (a.spec ? resolveCharacter(a.spec, style) : a.who ? chars[a.who] ?? resolveCharacter(a.who, style) : resolveCharacter(a.character ?? 'dude', style));
   const scenes = f.scenes.map(s => { const lines = timeLines(s.lines ?? []); return { ...s, lines, actors: (s.actors ?? []).map(a => { const spec = who(a); const out = { ...a, spec }; if (mode === '3d') out.id = a.id ?? a.who ?? 'actor'; else if (out.id === undefined && a.who) out.id = a.who; if (lines.length && a.autoTalk !== false) out.track = autoTalk(a.track ?? [], lines, out.id ?? a.who); return out; }) }; });
   const [W, H] = (f.size ?? '1920x1080').split('x').map(Number);
-  return { mode, scenes, W, H, fps: f.fps ?? 24, dur: scenes.reduce((a, s) => a + (s.dur ?? 0), 0), captions: f.captions ?? true };
+  return { mode, scenes, W, H, fps: f.fps ?? 24, dur: scenes.reduce((a, s) => a + (s.dur ?? 0), 0), captions: f.captions ?? true, motionBlur: f.motionBlur ?? film.motionBlur ?? 0 };
 }
 
 // Every name a film uses, checked against what exists, with a suggestion for typos. Returns a list of problems; empty means good.
@@ -63,6 +64,7 @@ export function validateFilm(film) {
   const out = [], f = film.scenes ? film : { scenes: [film], characters: film.characters, mode: film.mode };
   const check = (path, v, list, what) => { if (v === undefined || v === null || list.includes(v)) return; const s = typeof v === 'string' ? near(v, list) : null; out.push(`${path}: unknown ${what} "${v}"${s ? ` (did you mean "${s}"?)` : ''}`); };
   if (!Array.isArray(f.scenes) || !f.scenes.length) return ['film has no scenes'];
+  { const mb = film.motionBlur, n = typeof mb === 'object' && mb ? mb.samples : mb; if (mb !== undefined && !(typeof n === 'number' && n >= 0 && n <= 16)) out.push('motionBlur: a number of samples from 0 (off) to 16, or { samples, shutter }'); }
   const mode = f.mode ?? (f.scenes.some(s => s.world) ? '3d' : '2d'); if (!['2d', '3d'].includes(mode)) out.push(`mode: must be "2d" or "3d"`);
   const castNames = Object.keys(CAST), moves = [...Object.keys(MOVES), 'talk-mix'], ids = new Set(Object.keys(f.characters ?? {}));
   const checkChar = (path, c) => { if (typeof c === 'string') return check(path, c, castNames, 'cast member'); if (!c || typeof c !== 'object') return out.push(`${path}: a character is a cast name or an options object`);
@@ -101,8 +103,14 @@ export async function makeFilm(film, { W, H } = {}) {
   const clampX = x => Math.min(1920 - vw / 2, Math.max(vw / 2, x));
   // the window eases toward a new speaker over a third of a second instead of cutting
   const windowX = (s, local) => { const now = clampX(centre(s, local)); if (wide || s.frame?.x !== undefined) return now; const L = (s.lines ?? []).map(l => [l.at, l.at + l.dur]).flat().filter(b => local >= b && local < b + .35).pop(); if (L === undefined) return now; const before = clampX(centre(s, Math.max(0, L - 1e-3))), f = (local - L) / .35, e = f * f * (3 - 2 * f); return before + (now - before) * e; };
-  return { ...F, W: w, H: h, draw(c, t) { const { s, local } = sceneAt(t), ox = wide ? 0 : w / 2 - windowX(s, local) * k, oy = wide ? (h - 1080 * k) / 2 : 0, view = framed(c, k, ox, oy);
-    c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#efe6d6'; c.fillRect(0, 0, w, h); drawReel(view, F.scenes, t); c.setTransform(1, 0, 0, 1, 0, 0); caption(c, s, local); } };
+  const paint = (c, t, hold = 0) => { const { s, local } = sceneAt(t), ox = wide ? 0 : w / 2 - windowX(s, local) * k, oy = wide ? (h - 1080 * k) / 2 : 0, view = framed(c, k, ox, oy);
+    c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = '#efe6d6'; c.fillRect(0, 0, w, h); drawReel(view, F.scenes, t, { hold }); c.setTransform(1, 0, 0, 1, 0, 0); };
+  // Motion blur: average a few renders across the shutter, ending at t. Camera, travel and effects move between samples; the characters' drawings are held at t,
+  // so poses on twos never cross-dissolve. Off by default; each sample costs a whole frame. Captions stay sharp.
+  const mb = typeof F.motionBlur === 'object' ? F.motionBlur : { samples: F.motionBlur }, n = Math.max(1, Math.min(16, Math.round(mb.samples ?? 0))), shutter = (mb.shutter ?? .5) / F.fps;
+  let acc = null; const blurred = (c, t) => { acc ??= new OffscreenCanvas(w, h); const a = acc.getContext('2d');
+    for (let i = 0; i < n; i++) { const ti = Math.max(0, t - shutter * (n - 1 - i) / (n - 1)); paint(a, ti, t - ti); c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1 / (i + 1); c.drawImage(acc, 0, 0); c.restore(); } };
+  return { ...F, W: w, H: h, draw(c, t) { const { s, local } = sceneAt(t); if (n > 1 && typeof OffscreenCanvas !== 'undefined') blurred(c, t); else paint(c, t); c.setTransform(1, 0, 0, 1, 0, 0); caption(c, s, local); } };
 }
 // A canvas whose setTransform calls are composed with a scale and offset, so code written for the 1920x1080 stage draws into any window of any output.
 function framed(c, k, ox, oy) { return new Proxy(c, { get(tg, p) { if (p === 'setTransform') return (a, b, cc, d, e, f) => tg.setTransform(a * k, b * k, cc * k, d * k, e * k + ox, f * k + oy); if (p === 'resetTransform') return () => tg.setTransform(k, 0, 0, k, ox, oy); const v = tg[p]; return typeof v === 'function' ? v.bind(tg) : v; }, set(tg, p, v) { tg[p] = v; return true; } }); }

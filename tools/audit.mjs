@@ -5,7 +5,7 @@ import { solve, project as pr, rotY } from '../src/rig.js';
 import { MOVES } from '../src/moves/index.js';
 import { CAST, castNames } from '../src/cast.js';
 import { DUETS, solveDuet } from '../src/duets.js';
-const JUMP_OK = new Set(['zip-off', 'turn', 'punch', 'kick', 'double-take', 'scared-jump', 'jump', 'get-hit', 'slip', 'stamp', 'cheer']); // comedy and impact moves that snap on purpose
+const JUMP_OK = new Set(['zip-off', 'turn', 'punch', 'slap', 'kick', 'double-take', 'scared-jump', 'jump', 'get-hit', 'slip', 'stamp', 'cheer']); // comedy and impact moves that snap on purpose
 const only = process.argv[2], FACINGS = [.6, -.6, 0], STEP = 1 / 12, d2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]), d3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 const local = (sk, v) => rotY([v[0] - sk.chest[0], v[1] - sk.chest[1], v[2] - sk.chest[2]], -sk.chestYaw);
 const joints = sk => [sk.L.h, sk.R.h, sk.L.e, sk.R.e, sk.lf.a, sk.rf.a, sk.lf.k, sk.rf.k, sk.head];
